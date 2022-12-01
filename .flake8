@@ -1,0 +1,7 @@
+[flake8]
+ignore =
+	# at least two spaces before inline comment
+	E261
+max-complexity = 10
+max-line-length = 110
+exclude = .nox,.venv

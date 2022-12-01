@@ -1,0 +1,8 @@
+**/__pycache__
+.build
+.eggs
+.mypy_cache
+.venv
+build
+dist
+jshell.egg-info

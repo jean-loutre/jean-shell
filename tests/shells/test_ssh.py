@@ -1,0 +1,47 @@
+"""Config unit tests."""
+from unittest.mock import ANY, AsyncMock, patch
+
+from asyncssh import SSHClientConnectionOptions
+
+from jshell.shells.ssh import SshSettings
+from jshell.streams import PipeWriter
+
+
+@patch("jshell.shells.ssh.connect")
+async def test_connect(connect_mock: AsyncMock) -> None:
+    """SshSettings should forward correct arguments to asyncssh."""
+    settings = SshSettings(host="otters.org", user="gilbert")
+
+    async with settings.connect():
+        pass
+
+    connect_mock.return_value.__aenter__.assert_awaited_once()
+    connect_mock.return_value.__aexit__.assert_awaited_once()
+
+    connect_mock.assert_called_once()
+    args, kwargs = connect_mock.call_args_list[0]
+    assert args == ("otters.org",)
+
+    options = kwargs["options"]
+    assert isinstance(options, SSHClientConnectionOptions)
+    assert options.username == "gilbert"
+
+
+@patch("jshell.shells.ssh.connect")
+async def test_run(connect_mock: AsyncMock) -> None:
+    """SshSettings should forward correct arguments to asyncssh."""
+    settings = SshSettings(host="otters.org", user="gilbert")
+
+    async with settings.connect() as shell:
+
+        async def create_process(_: str, stdout: PipeWriter) -> AsyncMock:
+            await stdout.close()
+            return AsyncMock()
+
+        create_process_mock = (
+            connect_mock.return_value.__aenter__.return_value.create_process
+        )
+        create_process_mock.side_effect = create_process
+
+        await shell.run("tickle otter")
+        create_process_mock.assert_awaited_once_with("tickle otter", stdout=ANY)
