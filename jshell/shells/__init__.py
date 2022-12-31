@@ -1,5 +1,6 @@
 """A shell is the entry point to run commands."""
 from abc import ABC, abstractmethod
+from logging import Logger
 from typing import Callable
 
 from jshell.command import Command, Process
@@ -10,6 +11,9 @@ ProcessFactory = Callable[[str], Process]
 class Shell(ABC):
     """An shell usable to run commands on hosts."""
 
+    def __init__(self, log: Logger | None = None) -> None:
+        self._log = log
+
     def run(self, command: str) -> Command:
         """Return a `Command` ready to be run.
 
@@ -19,7 +23,7 @@ class Shell(ABC):
                  the given command.
         """
         process = self._create_process(command)
-        return Command(process)
+        return Command(process, log=self._log)
 
     @abstractmethod
     def _create_process(self, command: str) -> Process:

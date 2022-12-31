@@ -1,4 +1,6 @@
 """Shell wrapping all commands in sudo calls."""
+from typing import Any
+
 from jshell.command import Process
 from jshell.shells import Shell
 
@@ -6,13 +8,14 @@ from jshell.shells import Shell
 class SudoShell(Shell):
     """Shell wrapping another so all commands are executed using sudo."""
 
-    def __init__(self, inner: Shell, user: str | None = None) -> None:
+    def __init__(self, inner: Shell, user: str | None = None, **kwargs: Any) -> None:
         """Wraps a shell so all commands are executed using sudo.
 
         :param inner: The shell to wrap.
         :param user: The user to give as -u flag to sudo.
         :return: A shell executing all commands with sudo.
         """
+        super().__init__(**kwargs)
         self._inner = inner
         self._user = user
 

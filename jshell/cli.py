@@ -1,5 +1,6 @@
 """Jean-Shell CLI wrapper."""
 from asyncio import run
+from logging import INFO, basicConfig
 
 from click import argument, command
 
@@ -12,4 +13,5 @@ from jshell.inventory import Inventory
 @argument("operation")
 def main(inventory: str, operation: str) -> None:
     """Jean-Shell CLI entry point point."""
+    basicConfig(level=INFO)
     return run(load(inventory, Inventory).run(operation))

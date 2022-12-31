@@ -1,5 +1,6 @@
 """Base classe & utilities for Commands returned by shell."""
 from asyncio import gather
+from logging import Logger
 from pathlib import Path
 from typing import Generator, Protocol, Union
 
@@ -80,14 +81,38 @@ class Process(Protocol):
 OutputRedirect = Union[Path, PipeWriter]
 
 
+class _LogPipeWriter:
+    def __init__(self, log: Logger) -> None:
+        self._log = log
+        self._pending_line = ""
+
+    async def write(self, data: bytes) -> None:
+        string_content = self._pending_line + data.decode("utf-8")
+        self._pending_line = ""
+        lines = string_content.split("\n")
+
+        if string_content[-1] != "\n":
+            self._pending_line = lines.pop()
+
+        if len(lines) > 1 and lines[-1] == "":
+            lines.pop()
+
+        for line in lines:
+            self._log.info(line)
+
+    async def close(self) -> None:
+        pass
+
+
 class Command:
     """A sh-like command, with piping and file redirection support."""
 
-    def __init__(self, process: Process):
+    def __init__(self, process: Process, log: Logger | None = None):
         self._process = process
         self._pipe: "Command" | None = None
         self._output_redirects: list[OutputRedirect] = []
         self._stdout_capture: MemoryPipeWriter | None = None
+        self._log = log
 
     def __await__(self) -> Generator[None, None, CommandResult]:
         return self._run().__await__()  # pylint: disable=no-member
@@ -122,11 +147,15 @@ class Command:
         return CommandResult(return_code, stdout_capture)
 
     async def _get_stdout(self) -> PipeWriter:
-        redirects = self._output_redirects
+        redirects = list(self._output_redirects)
+
         if not redirects:
             assert self._stdout_capture is None
             self._stdout_capture = MemoryPipeWriter()
-            return self._stdout_capture
+            redirects.append(self._stdout_capture)
+
+        if self._log:
+            redirects.append(_LogPipeWriter(self._log))
 
         if len(redirects) == 1:
             return await self._get_output_redirect(redirects[0])

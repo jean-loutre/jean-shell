@@ -1,6 +1,7 @@
 """Connectors are usable to send commands to a target."""
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from logging import Logger
 from typing import AsyncIterator
 
 from asyncssh import (
@@ -10,6 +11,7 @@ from asyncssh import (
     SSHWriter,
     connect,
 )
+from asyncssh.logging import SSHLogger
 
 from jshell.command import Process
 from jshell.shells import Shell
@@ -27,7 +29,7 @@ class SshSettings:
     """User to connect with."""
 
     @asynccontextmanager
-    async def connect(self) -> AsyncIterator[Shell]:
+    async def connect(self, log: Logger | None = None) -> AsyncIterator[Shell]:
         """Open an ssh connection using this settings.
 
         :return: A `Shell` object usable to interact with the remote host.
@@ -35,12 +37,17 @@ class SshSettings:
         async with connect(
             self.host, options=SSHClientConnectionOptions(username=self.user)
         ) as connection:
-            yield _SshShell(connection)
+            yield _SshShell(connection, log=log)
 
 
 class _SshShell(Shell):
-    def __init__(self, connection: SSHClientConnection) -> None:
+    def __init__(
+        self, connection: SSHClientConnection, log: Logger | None = None
+    ) -> None:
+        super().__init__(log=log)
         self._connection = connection
+        if log:
+            self._connection._logger = SSHLogger(parent=log.getChild("ssh"))
 
     def _create_process(self, command: str) -> Process:
         return _SshProcess(self._connection, command)
