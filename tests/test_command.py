@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from jshell.command import Command
+from jshell.command import echo as builtin_echo
 from jshell.streams import MemoryPipeWriter, PipeWriter
 
 
@@ -87,3 +88,13 @@ async def test_pipe_to_multiple_outputs() -> None:
     assert str(result) == ""
     assert otter_vault.value == b"gilbert"
     assert otter_super_vault.value == b"gilbert"
+
+
+async def test_echo() -> None:
+    """The echo helper should allow to pipe a string or bytes to a command."""
+    cat = _Cat()
+
+    result = await (
+        builtin_echo(b"jean-bernard") | builtin_echo("jean-jackie\n") | Command(cat)
+    )
+    assert str(result) == "jean-jackie\njean-bernard"

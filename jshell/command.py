@@ -1,4 +1,5 @@
 """Base classe & utilities for Commands returned by shell."""
+from asyncio import gather
 from pathlib import Path
 from typing import Generator, Protocol, Union
 
@@ -101,15 +102,18 @@ class Command:
         return self
 
     async def _run(self) -> CommandResult:
-        stdout: PipeWriter = await self._get_stdout()
         command: Command | None = self
+        processes: list[Process] = []
         while command is not None:
-            stdout = await command._process.start(  # pylint: disable=protected-access
-                stdout
-            )
+            processes.append(command._process)  # pylint: disable=protected-access
             command = command._pipe  # pylint: disable=protected-access
 
-        return_code = await self._process.wait()
+        stdout: PipeWriter = await self._get_stdout()
+        for process in processes:
+            stdout = await process.start(stdout)
+        return_codes = await gather(*[process.wait() for process in processes])
+
+        return_code = next((code for code in return_codes if code != 0), 0)
 
         stdout_capture = b""
         if self._stdout_capture is not None:
@@ -139,3 +143,47 @@ class Command:
             return redirect
 
         raise AssertionError()
+
+
+class _EchoProcess:
+    def __init__(self, content: bytes = b""):
+        self._content = content
+        self._stdout: PipeWriter | None = None
+        self._closed = False
+
+    async def start(self, stdout: PipeWriter) -> PipeWriter:
+        assert self._stdout is None
+        self._stdout = stdout
+        await stdout.write(self._content)
+        return self
+
+    async def wait(self) -> int:
+        await self.close()
+        return 0
+
+    async def write(self, data: bytes) -> None:
+        assert self._stdout is not None
+        await self._stdout.write(data)
+
+    async def close(self) -> None:
+        """Saves the underlying BytesIO buffer, then closes it."""
+        assert self._stdout is not None
+        if not self._closed:
+            self._closed = True
+            await self._stdout.close()
+
+
+def echo(content: bytes | str, encoding: str = "utf-8") -> Command:
+    """Pipes content to another command.
+
+    If something is piped into the returned command, it is forwarded to the command
+    comming after echo.
+
+    :param content: Content to pipe to the next command.
+    :param encoding: If content is the string, the encoding to use to encode it.
+    :return: A command instance piping the given content to the next.
+    """
+
+    if isinstance(content, str):
+        content = content.encode(encoding)
+    return Command(_EchoProcess(content))
