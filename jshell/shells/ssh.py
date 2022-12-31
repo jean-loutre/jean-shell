@@ -11,6 +11,7 @@ from asyncssh import (
     connect,
 )
 
+from jshell.command import Process
 from jshell.shell import Shell
 from jshell.streams import PipeWriter
 
@@ -34,7 +35,15 @@ class SshSettings:
         async with connect(
             self.host, options=SSHClientConnectionOptions(username=self.user)
         ) as connection:
-            yield Shell(lambda command: _SshProcess(connection, command))
+            yield _SshShell(connection)
+
+
+class _SshShell(Shell):
+    def __init__(self, connection: SSHClientConnection) -> None:
+        self._connection = connection
+
+    def _create_process(self, command: str) -> Process:
+        return _SshProcess(self._connection, command)
 
 
 class _SshPipeWriter:
