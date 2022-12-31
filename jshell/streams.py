@@ -66,8 +66,9 @@ class MemoryPipeWriter:
 
     async def close(self) -> None:
         """Saves the underlying BytesIO buffer, then closes it."""
-        self._bytes = self._stream.getvalue()
-        self._stream.close()
+        if not self._stream.closed:
+            self._bytes = self._stream.getvalue()
+            self._stream.close()
 
 
 class CompoundPipeWriter:
