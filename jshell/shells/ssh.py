@@ -12,7 +12,7 @@ from asyncssh import (
 )
 
 from jshell.command import Process
-from jshell.shell import Shell
+from jshell.shells import Shell
 from jshell.streams import PipeWriter
 
 
