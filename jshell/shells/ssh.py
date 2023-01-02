@@ -49,8 +49,8 @@ class _SshShell(Shell):
         if log:
             self._connection._logger = SSHLogger(parent=log.getChild("ssh"))
 
-    def _create_process(self, command: str) -> Process:
-        return _SshProcess(self._connection, command)
+    def _create_process(self, command: str, env: dict[str, str]) -> Process:
+        return _SshProcess(self._connection, command, env)
 
 
 class _SshPipeWriter:
@@ -67,9 +67,12 @@ class _SshPipeWriter:
 
 
 class _SshProcess:
-    def __init__(self, connection: SSHClientConnection, command: str):
+    def __init__(
+        self, connection: SSHClientConnection, command: str, env: dict[str, str]
+    ):
         self._connection = connection
         self._command = command
+        self._env = env
         self._process: SSHClientProcess[bytes] | None = None
 
     async def start(self, stdout: PipeWriter) -> PipeWriter:
@@ -78,7 +81,7 @@ class _SshProcess:
         :return: The returncode.
         """
         self._process = await self._connection.create_process(
-            self._command, stdout=stdout
+            self._command, stdout=stdout, env=self._env
         )
         return _SshPipeWriter(self._process.stdin)
 

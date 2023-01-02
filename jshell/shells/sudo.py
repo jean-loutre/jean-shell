@@ -19,9 +19,9 @@ class SudoShell(Shell):
         self._inner = inner
         self._user = user
 
-    def _create_process(self, command: str) -> Process:
+    def _create_process(self, command: str, env: dict[str, str]) -> Process:
         if self._user is not None:
             command = f"-u {self._user} command"
         return self._inner._create_process(  # pylint: disable=protected-access
-            f"sudo {command}"
+            f"sudo {command}", env
         )

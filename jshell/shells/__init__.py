@@ -1,7 +1,8 @@
 """A shell is the entry point to run commands."""
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from logging import Logger
-from typing import Callable
+from typing import Callable, Iterator
 
 from jshell.command import Command, Process
 
@@ -13,6 +14,7 @@ class Shell(ABC):
 
     def __init__(self, log: Logger | None = None) -> None:
         self._log = log
+        self._env: dict[str, str] = {}
 
     def run(self, command: str) -> Command:
         """Return a `Command` ready to be run.
@@ -22,11 +24,19 @@ class Shell(ABC):
         :return: A `Command` instance that can be awaited to actually execute
                  the given command.
         """
-        process = self._create_process(command)
+        process = self._create_process(command, env=self._env)
         return Command(process, log=self._log)
 
+    @contextmanager
+    def env(self, **kwargs: str) -> Iterator[None]:
+        old_env = self._env.copy()
+        for key, value in dict(**kwargs).items():
+            self._env[key] = value
+        yield
+        self._env = old_env
+
     @abstractmethod
-    def _create_process(self, command: str) -> Process:
+    def _create_process(self, command: str, env: dict[str, str]) -> Process:
         """Create a new process using this shell.
 
         :param command: The command to run in this shell.
