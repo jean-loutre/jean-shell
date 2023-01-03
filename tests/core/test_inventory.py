@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 from pytest import mark
 
-from jshell.inventory import Inventory, Target, task
+from jshell.core.inventory import Inventory, Target, task
 
 
 @mark.asyncio

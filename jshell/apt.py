@@ -1,5 +1,5 @@
-from jshell.command import echo
-from jshell.shells import Shell
+from jshell.core.command import echo
+from jshell.core.shell import Shell
 
 
 async def set_packages(

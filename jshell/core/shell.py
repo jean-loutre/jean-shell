@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from logging import Logger
 from typing import Callable, Iterator
 
-from jshell.command import Command, Process
+from jshell.core.command import Command, Process
 
 ProcessFactory = Callable[[str], Process]
 

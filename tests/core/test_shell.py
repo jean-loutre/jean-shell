@@ -3,8 +3,8 @@ from logging import Logger
 from typing import cast
 from unittest.mock import Mock
 
-from jshell.command import Process
-from jshell.shells import Shell
+from jshell.core.command import Process
+from jshell.core.shell import Shell
 
 
 class MockShell(Shell):

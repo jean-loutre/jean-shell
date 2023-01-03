@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 from pytest import raises
 
-from jshell.streams import CompoundPipeWriter, MemoryPipeWriter
+from jshell.core.pipe import CompoundPipeWriter, MemoryPipeWriter
 
 
 async def test_memory_pipe_writer() -> None:
@@ -20,15 +20,15 @@ async def test_memory_pipe_writer() -> None:
 
 async def test_compound_pipe_writer() -> None:
     """A compound pipe writer should forward data to it's children."""
-    jshell = AsyncMock()
+    jean_jacques = AsyncMock()
     denise = AsyncMock()
-    writer = CompoundPipeWriter(jshell, denise)
+    writer = CompoundPipeWriter(jean_jacques, denise)
 
     await writer.write(b"Kweek kweek")
 
-    jshell.write.assert_awaited_once_with(b"Kweek kweek")
+    jean_jacques.write.assert_awaited_once_with(b"Kweek kweek")
     denise.write.assert_awaited_once_with(b"Kweek kweek")
 
     await writer.close()
-    jshell.close.assert_awaited_once()
+    jean_jacques.close.assert_awaited_once()
     denise.close.assert_awaited_once()

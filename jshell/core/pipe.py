@@ -25,20 +25,6 @@ class PipeWriter(Protocol):
         """Closes the underlying stream."""
 
 
-@runtime_checkable
-class PipeReader(Protocol):
-    """A stream reader, used in command pipes."""
-
-    async def read(self, count: int = -1) -> bytes:
-        """Read bytes from the underlying stream.
-
-        :return: Read bytes.
-        """
-
-    async def close(self) -> None:
-        """Closes the underlying stream."""
-
-
 class MemoryPipeWriter:
     """A pipe writer writing to memory.
 

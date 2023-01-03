@@ -4,7 +4,7 @@ from logging import Logger
 from pathlib import Path
 from typing import Generator, Protocol, Union
 
-from jshell.streams import (
+from jshell.core.pipe import (
     CompoundPipeWriter,
     FilePipeWriter,
     MemoryPipeWriter,

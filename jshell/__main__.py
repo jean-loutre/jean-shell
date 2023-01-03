@@ -4,8 +4,8 @@ from logging import INFO, basicConfig
 
 from click import argument, command
 
-from jshell.config import load
-from jshell.inventory import Inventory
+from jshell.core.config import load
+from jshell.core.inventory import Inventory
 
 
 @command()

@@ -15,11 +15,11 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "jshell=jshell.cli:main",
+            "jshell=jshell.__main__:main",
         ],
         "jshell_config_loaders": [
-            "py=jshell.config:py_loader",
-            "ref=jshell.config:ref_loader",
+            "py=jshell.core.config:py_loader",
+            "ref=jshell.core.config:ref_loader",
         ],
     },
     license="WTFPL",

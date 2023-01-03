@@ -1,4 +1,4 @@
 """Test inventory."""
-from jshell.inventory import Target
+from jshell.core.inventory import Target
 
 targets = [Target(name="peter")]

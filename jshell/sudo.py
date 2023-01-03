@@ -1,8 +1,8 @@
 """Shell wrapping all commands in sudo calls."""
 from typing import Any
 
-from jshell.command import Process
-from jshell.shells import Shell
+from jshell.core.command import Process
+from jshell.core.shell import Shell
 
 
 class SudoShell(Shell):

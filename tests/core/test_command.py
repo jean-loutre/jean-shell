@@ -1,9 +1,9 @@
 """Command unit tests."""
 from pathlib import Path
 
-from jshell.command import Command
-from jshell.command import echo as builtin_echo
-from jshell.streams import MemoryPipeWriter, PipeWriter
+from jshell.core.command import Command
+from jshell.core.command import echo as builtin_echo
+from jshell.core.pipe import MemoryPipeWriter, PipeWriter
 
 
 class _Echo:

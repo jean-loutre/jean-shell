@@ -2,9 +2,9 @@ from asyncio import Event, Queue, Task, create_task, wait_for
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Callable, Coroutine
 
-from jshell.command import Process
-from jshell.shells import Shell
-from jshell.streams import PipeWriter
+from jshell.core.command import Process
+from jshell.core.pipe import PipeWriter
+from jshell.core.shell import Shell
 
 
 class _Stdin:

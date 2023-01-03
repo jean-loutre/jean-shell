@@ -13,9 +13,9 @@ from asyncssh import (
 )
 from asyncssh.logging import SSHLogger
 
-from jshell.command import Process
-from jshell.shells import Shell
-from jshell.streams import PipeWriter
+from jshell.core.command import Process
+from jshell.core.pipe import PipeWriter
+from jshell.core.shell import Shell
 
 
 @dataclass(frozen=True, kw_only=True)

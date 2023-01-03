@@ -3,11 +3,11 @@ from unittest.mock import ANY, AsyncMock, patch
 
 from asyncssh import SSHClientConnectionOptions
 
-from jshell.shells.ssh import SshSettings
-from jshell.streams import PipeWriter
+from jshell.core.pipe import PipeWriter
+from jshell.ssh import SshSettings
 
 
-@patch("jshell.shells.ssh.connect")
+@patch("jshell.ssh.connect")
 async def test_connect(connect_mock: AsyncMock) -> None:
     """SshSettings should forward correct arguments to asyncssh."""
     settings = SshSettings(host="otters.org", user="gilbert")
@@ -27,7 +27,7 @@ async def test_connect(connect_mock: AsyncMock) -> None:
     assert options.username == "gilbert"
 
 
-@patch("jshell.shells.ssh.connect")
+@patch("jshell.ssh.connect")
 async def test_run(connect_mock: AsyncMock) -> None:
     """SshSettings should forward correct arguments to asyncssh."""
     settings = SshSettings(host="otters.org", user="gilbert")

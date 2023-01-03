@@ -1,6 +1,6 @@
-from jshell.operations.apt import set_packages
-from jshell.shells import Shell
-from tests.mocks.mock_shell import mock_shell
+from jshell.apt import set_packages
+from jshell.core.shell import Shell
+from tests._mocks.mock_shell import mock_shell
 
 
 async def test_apt() -> None:
