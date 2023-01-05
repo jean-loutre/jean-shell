@@ -16,7 +16,7 @@ class Shell(ABC):
         self._log = log
         self._env: dict[str, str] = {}
 
-    def run(self, command: str) -> Command:
+    def __call__(self, command: str) -> Command:
         """Return a `Command` ready to be run.
 
         :param command: The command to run in this shell.

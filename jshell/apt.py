@@ -3,18 +3,18 @@ from jshell.core.shell import Shell
 
 
 async def set_packages(
-    shell: Shell, *packages: str, source_list: str | None = None
+    sh: Shell, *packages: str, source_list: str | None = None
 ) -> None:
     if source_list is not None:
-        await (echo(source_list) | shell.run("cat > /etc/apt/sources.list"))
+        await (echo(source_list) | sh("cat > /etc/apt/sources.list"))
 
-    installed_packages = str(await shell.run("apt-mark showmanual"))
+    installed_packages = str(await sh("apt-mark showmanual"))
     if installed_packages:
         installed_packages = installed_packages.replace("\n", " ")
-        await shell.run(f"apt-mark auto {installed_packages}")
+        await sh(f"apt-mark auto {installed_packages}")
 
     package_list = " ".join(packages)
-    with shell.env(DEBIAN_FRONTEND="noninteractive"):
-        await shell.run(f"apt-get -yq install {package_list}")
-        await shell.run("apt-get -yq dist-upgrade")
-        await shell.run("apt-get -yq autoremove --purge")
+    with sh.env(DEBIAN_FRONTEND="noninteractive"):
+        await sh(f"apt-get -yq install {package_list}")
+        await sh("apt-get -yq dist-upgrade")
+        await sh("apt-get -yq autoremove --purge")

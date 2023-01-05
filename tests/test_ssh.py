@@ -32,7 +32,7 @@ async def test_run(connect_mock: AsyncMock) -> None:
     """SshSettings should forward correct arguments to asyncssh."""
     settings = SshSettings(host="otters.org", user="gilbert")
 
-    async with settings.connect() as shell:
+    async with settings.connect() as ssh:
 
         async def create_process(
             _: str,
@@ -47,5 +47,5 @@ async def test_run(connect_mock: AsyncMock) -> None:
         )
         create_process_mock.side_effect = create_process
 
-        await shell.run("tickle otter")
+        await ssh("tickle otter")
         create_process_mock.assert_awaited_once_with("tickle otter", stdout=ANY, env={})

@@ -20,30 +20,26 @@ class MockShell(Shell):
 
 async def test_env() -> None:
     """Shell should set environment variables."""
-    shell = MockShell()
-    shell.run("power-weasel")
-    shell.create_process.assert_called_once_with("power-weasel", {})
+    sh = MockShell()
+    sh("power-weasel")
+    sh.create_process.assert_called_once_with("power-weasel", {})
 
-    with shell.env(POWER_LEVEL="3"):
-        shell.create_process.reset_mock()
-        shell.run("power-weasel")
-        shell.create_process.assert_called_once_with(
-            "power-weasel", {"POWER_LEVEL": "3"}
-        )
+    with sh.env(POWER_LEVEL="3"):
+        sh.create_process.reset_mock()
+        sh("power-weasel")
+        sh.create_process.assert_called_once_with("power-weasel", {"POWER_LEVEL": "3"})
 
-        with shell.env(WEASER_ANGER="55"):
-            shell.create_process.reset_mock()
-            shell.run("power-weasel")
-            shell.create_process.assert_called_once_with(
+        with sh.env(WEASER_ANGER="55"):
+            sh.create_process.reset_mock()
+            sh("power-weasel")
+            sh.create_process.assert_called_once_with(
                 "power-weasel", {"POWER_LEVEL": "3", "WEASER_ANGER": "55"}
             )
 
-        shell.create_process.reset_mock()
-        shell.run("power-weasel")
-        shell.create_process.assert_called_once_with(
-            "power-weasel", {"POWER_LEVEL": "3"}
-        )
+        sh.create_process.reset_mock()
+        sh("power-weasel")
+        sh.create_process.assert_called_once_with("power-weasel", {"POWER_LEVEL": "3"})
 
-    shell.create_process.reset_mock()
-    shell.run("power-weasel")
-    shell.create_process.assert_called_once_with("power-weasel", {})
+    sh.create_process.reset_mock()
+    sh("power-weasel")
+    sh.create_process.assert_called_once_with("power-weasel", {})
