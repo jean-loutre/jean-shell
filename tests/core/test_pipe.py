@@ -83,19 +83,19 @@ async def test_aggregate_pipe_writer_merge() -> None:
 
 
 async def test_concurrent_pipe_writer() -> None:
-    """A compound pipe writer should forward data to it's children."""
-    jean_jacques = AsyncMock()
-    denise = AsyncMock()
-    writer = ConcurrentPipeWriter(jean_jacques, denise)
+    """A concurrent pipe writer should forward data to it's children."""
+    _1 = AsyncMock()
+    _2 = AsyncMock()
+    writer = ConcurrentPipeWriter(_1, _2)
 
     await writer.write(b"Kweek kweek")
 
-    jean_jacques.write.assert_awaited_once_with(b"Kweek kweek")
-    denise.write.assert_awaited_once_with(b"Kweek kweek")
+    _1.write.assert_awaited_once_with(b"Kweek kweek")
+    _2.write.assert_awaited_once_with(b"Kweek kweek")
 
     await writer.close()
-    jean_jacques.close.assert_awaited_once()
-    denise.close.assert_awaited_once()
+    _1.close.assert_awaited_once()
+    _2.close.assert_awaited_once()
 
 
 async def test_await_pipe() -> None:
