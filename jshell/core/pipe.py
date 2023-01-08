@@ -3,6 +3,7 @@
 This module defines PipeWriter and PipeReader interfaces, meant to unify
 asynchronous access to streams used in pipe piping in Jean-Shell.
 """
+from abc import ABC, abstractmethod
 from asyncio import gather
 from io import BytesIO
 from itertools import chain
@@ -72,11 +73,8 @@ class MemoryPipeWriter:
             self._stream.close()
 
 
-class CompoundPipeWriter:
-    """A pipe writer forwarding data to a list of child writers.
-
-    Used by pipes to forward stdout to multiple processes and files.
-    """
+class AggregatePipeWriter(ABC):
+    """A pipe writer forwarding data to a list of child writers."""
 
     def __init__(self, *children: PipeWriter) -> None:
         self._children: set[PipeWriter] = set(children)
@@ -85,8 +83,8 @@ class CompoundPipeWriter:
     def children(self) -> Iterable[PipeWriter]:
         return self._children
 
-    @staticmethod
-    def merge(first: PipeWriter, second: PipeWriter) -> PipeWriter:
+    @classmethod
+    def merge(cls, first: PipeWriter, second: PipeWriter) -> PipeWriter:
         """Merge two pipe writers."""
 
         if isinstance(first, _NullPipeWriter):
@@ -96,31 +94,44 @@ class CompoundPipeWriter:
 
         children: set[PipeWriter] = set()
 
-        if isinstance(first, CompoundPipeWriter) and isinstance(
-            second, CompoundPipeWriter
-        ):
+        if isinstance(first, cls) and isinstance(second, cls):
             children = set(chain.from_iterable([first.children, second.children]))
-        elif isinstance(first, CompoundPipeWriter):
+        elif isinstance(first, cls):
             children = set(first.children)
             children.add(second)
-        elif isinstance(second, CompoundPipeWriter):
+        elif isinstance(second, cls):
             children = set(second.children)
             children.add(first)
         else:
             children = set([first, second])
 
-        return CompoundPipeWriter(*children)
+        return cls(*children)
+
+    @abstractmethod
+    async def write(self, data: bytes) -> None:
+        pass
+
+    @abstractmethod
+    async def close(self) -> None:
+        pass
+
+
+class ConcurrentPipeWriter(AggregatePipeWriter):
+    """A pipe writer forwarding data to a list of child writers.
+
+    Used by pipes to forward stdout to multiple processes and files.
+    """
 
     async def write(self, data: bytes) -> None:
         """Write given bytes to the underlying memory stream.
 
         :param data: Bytes to write.
         """
-        await gather(*[child.write(data) for child in self._children])
+        await gather(*[child.write(data) for child in self.children])
 
     async def close(self) -> None:
         """Saves the underlying BytesIO buffer, then closes it."""
-        await gather(*[child.close() for child in self._children])
+        await gather(*[child.close() for child in self.children])
 
 
 class FilePipeWriter:
