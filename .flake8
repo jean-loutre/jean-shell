@@ -2,6 +2,8 @@
 ignore =
 	# at least two spaces before inline comment
 	E261
+	# line break before bynary operator
+	W503
 max-complexity = 10
 max-line-length = 110
 exclude = .nox,.venv

@@ -96,3 +96,19 @@ async def test_pipe_combination() -> None:
     assert result == "OH SHIT !!1"
     await out.close()
     assert out.value == b"oh.no."
+
+
+async def test_pipe_to_function() -> None:
+    """Combining pipe to function should pipe result of the command through it."""
+
+    @pipe
+    async def _oh_shit(stdout: PipeWriter) -> Process[Any, str]:
+        async def wait(value: Any) -> str:
+            return "oh shit"
+
+        return stdout, wait
+
+    async def _yell(result: str) -> str:
+        return f"{result} !!1".upper()
+
+    assert await (_oh_shit() | _yell) == "OH SHIT !!1"

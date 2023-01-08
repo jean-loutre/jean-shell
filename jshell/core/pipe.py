@@ -136,6 +136,7 @@ class LogPipeWriter:
 
 In = TypeVar("In")
 Out = TypeVar("Out")
+Next = TypeVar("Next")
 
 Wait = Callable[[In], Awaitable[Out]]
 Process = tuple[PipeWriter, Wait[In, Out]]
@@ -157,35 +158,37 @@ class PipeStart:
 PIPE_START = PipeStart()
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 
 class Pipe(Generic[In, Out]):
     def __init__(
-        self, previous: "Pipe[In, T] | None", start: ProcessFactory[T, Out]
+        self, previous: "Pipe[In, Any] | None", start: ProcessFactory[Any, Out]
     ) -> None:
         self._previous = previous
         self._start = start
 
-    def __await__(self: "Pipe[PipeStart, T]") -> Generator[None, None, T]:
+    def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
         return self.run(_NullPipeWriter()).__await__()
 
-    def __or__(
-        self, right: "Pipe[Out, T] | Pipe[Out | PipeStart, T | PipeStart]"
-    ) -> "Pipe[In, T]":
+    def __or__(self, right: "Pipable[Out, Next]") -> "Pipe[In, Next]":
         # Due to the dropping of PipeStart from the right pipe input and output
         # types, the code is correct only if any pipe receiving anything else
         # than PIPE_START as input must not return PIPE_START as output.
-        start_stack: list[Any] = []
-        previous: Any = right
-        while previous is not None:
-            start_stack.append(right._start)
-            previous = previous._previous
+        if isinstance(right, Pipe):
+            if right._previous is None:
+                return Pipe(self, right._start)  # type: ignore
 
-        new_pipe = self
-        for start in reversed(start_stack):
-            new_pipe = Pipe(self, start)
+            return Pipe(self | right._previous, right._start)  # type: ignore
 
-        return cast(Pipe[In, T], new_pipe)
+        async def _wait(result: Out) -> Next:
+            assert not isinstance(right, Pipe)
+            return await right(result)
+
+        async def _start(stdout: PipeWriter) -> Process[Out, Next]:
+            return stdout, _wait
+
+        return Pipe(self, _start)
 
     async def run(self: "Pipe[PipeStart, Out]", stdout: PipeWriter) -> Out:
         stdin, wait = await self._start(stdout)
@@ -195,24 +198,33 @@ class Pipe(Generic[In, Out]):
             # PIPE_START as input can be awaited, having previous == None
             # here means that self is the first of the pipe chain thus, accepts
             # PipeStart as input.
-            result = await wait(PIPE_START)  # type: ignore
+            result = await wait(PIPE_START)
         else:
             previous_result = await previous.run(stdin)
             result = await wait(previous_result)
         return result
 
 
+Pipable = (
+    Pipe[Out, Next]
+    | Pipe[Out | PipeStart, Next | PipeStart]
+    | Callable[[Out], Awaitable[Next]]
+)
+
 P = ParamSpec("P")
-R = TypeVar("R")
 
 
 def pipe(
-    func: Callable[Concatenate[PipeWriter, P], Awaitable[Process[In, Out]]]
-) -> Callable[P, Pipe[In, Out]]:
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Pipe[In, Out]:
-        async def start(stdout: PipeWriter) -> Process[In, Out]:
+    func: Callable[Concatenate[PipeWriter, P], Awaitable[Process[In, Next]]]
+) -> Callable[P, Pipe[In, Next]]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> Pipe[In, Next]:
+        async def start(stdout: PipeWriter) -> Process[In, Next]:
             return await func(stdout, *args, **kwargs)
 
         return Pipe(None, start)
 
     return inner
+
+
+def forward_result(result: T | PipeStart) -> T | PipeStart:
+    return result
