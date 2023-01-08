@@ -5,6 +5,7 @@ asynchronous access to streams used in pipe piping in Jean-Shell.
 """
 from asyncio import gather
 from io import BytesIO
+from itertools import chain
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -14,6 +15,7 @@ from typing import (
     Concatenate,
     Generator,
     Generic,
+    Iterable,
     ParamSpec,
     Protocol,
     TypeVar,
@@ -78,6 +80,36 @@ class CompoundPipeWriter:
 
     def __init__(self, *children: PipeWriter) -> None:
         self._children: set[PipeWriter] = set(children)
+
+    @property
+    def children(self) -> Iterable[PipeWriter]:
+        return self._children
+
+    @staticmethod
+    def merge(first: PipeWriter, second: PipeWriter) -> PipeWriter:
+        """Merge two pipe writers."""
+
+        if isinstance(first, _NullPipeWriter):
+            return second
+        if isinstance(second, _NullPipeWriter):
+            return first
+
+        children: set[PipeWriter] = set()
+
+        if isinstance(first, CompoundPipeWriter) and isinstance(
+            second, CompoundPipeWriter
+        ):
+            children = set(chain.from_iterable([first.children, second.children]))
+        elif isinstance(first, CompoundPipeWriter):
+            children = set(first.children)
+            children.add(second)
+        elif isinstance(second, CompoundPipeWriter):
+            children = set(second.children)
+            children.add(first)
+        else:
+            children = set([first, second])
+
+        return CompoundPipeWriter(*children)
 
     async def write(self, data: bytes) -> None:
         """Write given bytes to the underlying memory stream.
