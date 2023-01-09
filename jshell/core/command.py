@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Generator, Protocol, Union
 
 from jshell.core.pipe import (
-    ConcurrentPipeWriter,
+    AggregatePipeWriter,
     FilePipeWriter,
     MemoryPipeWriter,
     PipeWriter,
@@ -134,7 +134,7 @@ class Command:
         if len(redirects) == 1:
             return await self._get_output_redirect(redirects[0])
 
-        return ConcurrentPipeWriter(
+        return AggregatePipeWriter(
             *[await self._get_output_redirect(redirect) for redirect in redirects]
         )
 

@@ -73,7 +73,7 @@ class MemoryPipeWriter:
             self._stream.close()
 
 
-class AggregatePipeWriter(ABC):
+class AggregatePipeWriter:
     """A pipe writer forwarding data to a list of child writers."""
 
     def __init__(self, *children: PipeWriter) -> None:
@@ -106,21 +106,6 @@ class AggregatePipeWriter(ABC):
             children = set([first, second])
 
         return cls(*children)
-
-    @abstractmethod
-    async def write(self, data: bytes) -> None:
-        pass
-
-    @abstractmethod
-    async def close(self) -> None:
-        pass
-
-
-class ConcurrentPipeWriter(AggregatePipeWriter):
-    """A pipe writer forwarding data to a list of child writers.
-
-    Used by pipes to forward stdout to multiple processes and files.
-    """
 
     async def write(self, data: bytes) -> None:
         """Write given bytes to the underlying memory stream.

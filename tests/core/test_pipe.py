@@ -7,7 +7,6 @@ from pytest import raises
 from jshell.core.pipe import (
     PIPE_START,
     AggregatePipeWriter,
-    ConcurrentPipeWriter,
     MemoryPipeWriter,
     PipeWriter,
     Process,
@@ -28,65 +27,11 @@ async def test_memory_pipe_writer() -> None:
     assert writer.value == b"Kweek kweek"
 
 
-async def test_aggregate_pipe_writer_merge() -> None:
-    """A compound pipe writer merge function should drop useless writers."""
-
-    class _DummyPipeWriter(AggregatePipeWriter):
-        async def write(self, data: bytes) -> None:
-            pass
-
-        async def close(self) -> None:
-            pass
-
-    _1: PipeWriter = _NullPipeWriter()
-    _2: PipeWriter = _NullPipeWriter()
-    merged: PipeWriter = _DummyPipeWriter.merge(_1, _2)
-    assert merged == _2
-
-    _1 = MemoryPipeWriter()
-    _2 = _NullPipeWriter()
-    merged = _DummyPipeWriter.merge(_1, _2)
-    assert merged == _1
-
-    _1 = _DummyPipeWriter(MemoryPipeWriter())
-    _2 = _DummyPipeWriter(MemoryPipeWriter())
-    merged = _DummyPipeWriter.merge(_1, _2)
-    assert isinstance(merged, _DummyPipeWriter)
-    children = list(merged.children)
-    assert isinstance(children[0], MemoryPipeWriter)
-    assert isinstance(children[1], MemoryPipeWriter)
-
-    _1 = _DummyPipeWriter(MemoryPipeWriter())
-    _2 = MemoryPipeWriter()
-    merged = _DummyPipeWriter.merge(_1, _2)
-    assert isinstance(merged, _DummyPipeWriter)
-    children = list(merged.children)
-    assert len(children) == 2
-    assert isinstance(children[0], MemoryPipeWriter)
-    assert isinstance(children[1], MemoryPipeWriter)
-
-    _1 = MemoryPipeWriter()
-    _2 = _DummyPipeWriter(MemoryPipeWriter())
-    merged = _DummyPipeWriter.merge(_1, _2)
-    assert isinstance(merged, _DummyPipeWriter)
-    children = list(merged.children)
-    assert isinstance(children[0], MemoryPipeWriter)
-    assert isinstance(children[1], MemoryPipeWriter)
-
-    _1 = MemoryPipeWriter()
-    _2 = MemoryPipeWriter()
-    merged = _DummyPipeWriter.merge(_1, _2)
-    assert isinstance(merged, _DummyPipeWriter)
-    children = list(merged.children)
-    assert isinstance(children[0], MemoryPipeWriter)
-    assert isinstance(children[1], MemoryPipeWriter)
-
-
-async def test_concurrent_pipe_writer() -> None:
-    """A concurrent pipe writer should forward data to it's children."""
+async def test_aggregate_pipe_writer() -> None:
+    """An aggregate pipe writer should forward data to it's children."""
     _1 = AsyncMock()
     _2 = AsyncMock()
-    writer = ConcurrentPipeWriter(_1, _2)
+    writer = AggregatePipeWriter(_1, _2)
 
     await writer.write(b"Kweek kweek")
 
@@ -96,6 +41,30 @@ async def test_concurrent_pipe_writer() -> None:
     await writer.close()
     _1.close.assert_awaited_once()
     _2.close.assert_awaited_once()
+
+
+async def test_aggregate_pipe_writer_merge() -> None:
+    """A compound pipe writer merge function should drop useless writers."""
+
+    null_pipe: PipeWriter = _NullPipeWriter()
+    impl_pipe: PipeWriter = MemoryPipeWriter()
+    assert AggregatePipeWriter.merge(null_pipe, impl_pipe) == impl_pipe
+    assert AggregatePipeWriter.merge(impl_pipe, null_pipe) == impl_pipe
+
+    for _1, _2 in [
+        (
+            AggregatePipeWriter(MemoryPipeWriter()),
+            AggregatePipeWriter(MemoryPipeWriter()),
+        ),
+        (AggregatePipeWriter(MemoryPipeWriter()), MemoryPipeWriter()),
+        (MemoryPipeWriter(), AggregatePipeWriter(MemoryPipeWriter())),
+        (MemoryPipeWriter(), MemoryPipeWriter()),
+    ]:
+        merged = AggregatePipeWriter.merge(cast(PipeWriter, _1), cast(PipeWriter, _2))
+        assert isinstance(merged, AggregatePipeWriter)
+        children = list(merged.children)
+        assert isinstance(children[0], MemoryPipeWriter)
+        assert isinstance(children[1], MemoryPipeWriter)
 
 
 async def test_await_pipe() -> None:
