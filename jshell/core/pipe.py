@@ -3,8 +3,7 @@
 This module defines PipeWriter and PipeReader interfaces, meant to unify
 asynchronous access to streams used in pipe piping in Jean-Shell.
 """
-from abc import ABC, abstractmethod
-from asyncio import gather
+from asyncio import create_task, gather
 from io import BytesIO
 from itertools import chain
 from logging import Logger
@@ -254,5 +253,34 @@ def pipe(
     return inner
 
 
-def forward_result(result: T | PipeStart) -> T | PipeStart:
+async def forward_result(result: T | PipeStart) -> T | PipeStart:
     return result
+
+
+@pipe
+async def echo(
+    stdout: PipeWriter, content: bytes | str, encoding: str = "utf-8"
+) -> Process[T | PipeStart, T | PipeStart]:
+    if isinstance(content, str):
+        byte_content = content.encode(encoding)
+    else:
+        byte_content = content
+
+    write_content_task = create_task(stdout.write(byte_content))
+
+    class _PipeWriter:
+        async def write(self, data: bytes) -> None:
+            await write_content_task
+            await stdout.write(data)
+
+        async def close(self) -> None:
+            await write_content_task
+            await stdout.close()
+
+    next_stdout = _PipeWriter()
+
+    async def _wait(result: T | PipeStart) -> T | PipeStart:
+        await next_stdout.close()
+        return result
+
+    return next_stdout, _wait
