@@ -4,7 +4,7 @@ This module defines PipeWriter and PipeReader interfaces, meant to unify
 asynchronous access to streams used in pipe piping in Jean-Shell.
 """
 from asyncio import create_task, gather
-from io import BytesIO
+from io import BufferedIOBase, BytesIO, RawIOBase
 from itertools import chain
 from logging import Logger
 from pathlib import Path
@@ -257,6 +257,42 @@ async def forward_result(result: T | PipeStart) -> T | PipeStart:
     return result
 
 
+class _ConcatenatePipeWriter:
+    def __init__(self, start: RawIOBase | BufferedIOBase, out: PipeWriter) -> None:
+        self._write_start_task = create_task(self._write_start(start))
+        self._out = out
+
+    async def write(self, data: bytes) -> None:
+        await self._write_start_task
+        await self._out.write(data)
+
+    async def close(self) -> None:
+        await self._write_start_task
+        await self._out.close()
+
+    async def _write_start(self, start: RawIOBase | BufferedIOBase) -> None:
+        buffer = bytearray(1024)
+        n = start.readinto(buffer)
+
+        while n != 0:
+            await self._out.write(buffer[0:n])
+            n = start.readinto(buffer)
+
+        start.close()
+
+
+def _concatenate(
+    start: RawIOBase | BufferedIOBase, out: PipeWriter
+) -> Process[T | PipeStart, T | PipeStart]:
+    writer = _ConcatenatePipeWriter(start, out)
+
+    async def _wait(result: T | PipeStart) -> T | PipeStart:
+        await writer.close()
+        return result
+
+    return writer, _wait
+
+
 @pipe
 async def echo(
     stdout: PipeWriter, content: bytes | str, encoding: str = "utf-8"
@@ -266,21 +302,4 @@ async def echo(
     else:
         byte_content = content
 
-    write_content_task = create_task(stdout.write(byte_content))
-
-    class _PipeWriter:
-        async def write(self, data: bytes) -> None:
-            await write_content_task
-            await stdout.write(data)
-
-        async def close(self) -> None:
-            await write_content_task
-            await stdout.close()
-
-    next_stdout = _PipeWriter()
-
-    async def _wait(result: T | PipeStart) -> T | PipeStart:
-        await next_stdout.close()
-        return result
-
-    return next_stdout, _wait
+    return _concatenate(BytesIO(byte_content), stdout)
