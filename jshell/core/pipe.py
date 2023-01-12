@@ -167,8 +167,8 @@ Out = TypeVar("Out")
 Next = TypeVar("Next")
 
 Wait = Callable[[In], Awaitable[Out]]
-Process = tuple[PipeWriter, Wait[In, Out]]
-ProcessFactory = Callable[[PipeWriter], Awaitable[Process[In, Out]]]
+Process = tuple[PipeWriter, PipeWriter, Wait[In, Out]]
+ProcessFactory = Callable[[PipeWriter, PipeWriter], Awaitable[Process[In, Out]]]
 
 
 class _NullPipeWriter:
@@ -197,7 +197,7 @@ class Pipe(Generic[In, Out]):
         self._start = start
 
     def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
-        return self.run(_NullPipeWriter()).__await__()
+        return self.run(_NullPipeWriter(), _NullPipeWriter()).__await__()
 
     def __or__(self, right: "Pipable[Out, Next]") -> "Pipe[In, Next]":
         # Due to the dropping of PipeStart from the right pipe input and output
@@ -213,13 +213,15 @@ class Pipe(Generic[In, Out]):
             assert not isinstance(right, Pipe)
             return await right(result)
 
-        async def _start(stdout: PipeWriter) -> Process[Out, Next]:
-            return stdout, _wait
+        async def _start(stdout: PipeWriter, stderr: PipeWriter) -> Process[Out, Next]:
+            return stdout, stderr, _wait
 
         return Pipe(self, _start)
 
-    async def run(self: "Pipe[PipeStart, Out]", stdout: PipeWriter) -> Out:
-        stdin, wait = await self._start(stdout)
+    async def run(
+        self: "Pipe[PipeStart, Out]", stdout: PipeWriter, stderr: PipeWriter
+    ) -> Out:
+        stdin, stderr, wait = await self._start(stdout, stderr)
         previous = self._previous
         if previous is None:
             # As self type is constrained so that only pipes that can accept
@@ -228,7 +230,7 @@ class Pipe(Generic[In, Out]):
             # PipeStart as input.
             result = await wait(PIPE_START)
         else:
-            previous_result = await previous.run(stdin)
+            previous_result = await previous.run(stdin, stderr)
             result = await wait(previous_result)
         return result
 
@@ -243,11 +245,11 @@ P = ParamSpec("P")
 
 
 def pipe(
-    func: Callable[Concatenate[PipeWriter, P], Awaitable[Process[In, Next]]]
+    func: Callable[Concatenate[PipeWriter, PipeWriter, P], Awaitable[Process[In, Next]]]
 ) -> Callable[P, Pipe[In, Next]]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> Pipe[In, Next]:
-        async def start(stdout: PipeWriter) -> Process[In, Next]:
-            return await func(stdout, *args, **kwargs)
+        async def start(stdout: PipeWriter, stderr: PipeWriter) -> Process[In, Next]:
+            return await func(stdout, stderr, *args, **kwargs)
 
         return Pipe(None, start)
 
@@ -283,46 +285,49 @@ class _ConcatenatePipeWriter:
 
 
 def _concatenate(
-    start: RawIOBase | BufferedIOBase, out: PipeWriter
+    start: RawIOBase | BufferedIOBase, stdout: PipeWriter, stderr: PipeWriter
 ) -> Process[T | PipeStart, T | PipeStart]:
-    writer = _ConcatenatePipeWriter(start, out)
+    writer = _ConcatenatePipeWriter(start, stdout)
 
     async def _wait(result: T | PipeStart) -> T | PipeStart:
         await writer.close()
         return result
 
-    return writer, _wait
+    return writer, stderr, _wait
 
 
 @pipe
 async def cat(
-        stdout: PipeWriter, source: Path | str
+    stdout: PipeWriter, stderr: PipeWriter, source: Path | str
 ) -> Process[T | PipeStart, T | PipeStart]:
     if isinstance(source, str):
         source = Path(source)
+    return _concatenate(open(source, "rb"), stdout, stderr)
 
-    return _concatenate(open(source, "rb"), stdout)
 
 @pipe
 async def echo(
-    stdout: PipeWriter, content: bytes | str, encoding: str = "utf-8"
+    stdout: PipeWriter,
+    stderr: PipeWriter,
+    content: bytes | str,
+    encoding: str = "utf-8",
 ) -> Process[T | PipeStart, T | PipeStart]:
     if isinstance(content, str):
         byte_content = content.encode(encoding)
     else:
         byte_content = content
 
-    return _concatenate(BytesIO(byte_content), stdout)
+    return _concatenate(BytesIO(byte_content), stdout, stderr)
 
 
-async def _get_stdout(stdout: PipeWriter) -> Process[Any, bytes]:
+async def _get_stdout(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, bytes]:
     content = MemoryPipeWriter()
 
     async def _wait(_: Any) -> bytes:
         await content.close()
         return content.value
 
-    return AggregatePipeWriter.merge(stdout, content), _wait
+    return AggregatePipeWriter.merge(stdout, content), stderr, _wait
 
 
 STDOUT: Final[Pipe[Any, bytes]] = Pipe(None, start=_get_stdout)

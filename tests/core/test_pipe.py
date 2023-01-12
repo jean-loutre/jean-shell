@@ -1,4 +1,5 @@
 """Streams test method."""
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock
 
@@ -81,9 +82,9 @@ async def test_await_pipe() -> None:
     wait = AsyncMock(side_effect=_wait)
 
     @pipe
-    async def _pipe(stdout: PipeWriter) -> Process[Any, object]:
+    async def _pipe(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, object]:
         await stdout.write(b"")
-        return stdout, wait
+        return stdout, stderr, wait
 
     assert result == await _pipe()
     wait.assert_awaited_once()
@@ -93,29 +94,29 @@ async def test_pipe_combination() -> None:
     """Combining pipes should pipe result and stdout through the pipe chain."""
 
     @pipe
-    async def _oh_shit(stdout: PipeWriter) -> Process[Any, str]:
+    async def _oh_shit(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, str]:
         await stdout.write(b"no.")
 
         async def wait(_: Any) -> str:
             return "oh shit"
 
-        return stdout, wait
+        return stdout, stderr, wait
 
     @pipe
-    async def _exclaim(stdout: PipeWriter) -> Process[str, str]:
+    async def _exclaim(stdout: PipeWriter, stderr: PipeWriter) -> Process[str, str]:
         await stdout.write(b"oh.")
 
         async def wait(result: str) -> str:
             return f"{result} !!1"
 
-        return stdout, wait
+        return stdout, stderr, wait
 
     @pipe
-    async def _yell(_: PipeWriter) -> Process[str, str]:
+    async def _yell(_: PipeWriter, stderr: PipeWriter) -> Process[str, str]:
         async def wait(result: str) -> str:
             return f"{result}".upper()
 
-        return out, wait
+        return out, stderr, wait
 
     out = MemoryPipeWriter()
 
@@ -130,11 +131,11 @@ async def test_pipe_to_function() -> None:
     """Combining pipe to function should pipe result of the command through it."""
 
     @pipe
-    async def _oh_shit(stdout: PipeWriter) -> Process[Any, str]:
+    async def _oh_shit(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, str]:
         async def wait(value: Any) -> str:
             return "oh shit"
 
-        return stdout, wait
+        return stdout, stderr, wait
 
     async def _yell(result: str) -> str:
         return f"{result} !!1".upper()
@@ -142,7 +143,7 @@ async def test_pipe_to_function() -> None:
     assert await (_oh_shit() | _yell) == "OH SHIT !!1"
 
 
-async def test_cat(shared_datadir) -> None:
+async def test_cat(shared_datadir: Path) -> None:
     """echo method should return a pipe writing content to stdout."""
     path = shared_datadir / "yodeldidoo"
     assert await (cat(path) | STDOUT) == b"Yodeldidoo\n"
@@ -159,11 +160,11 @@ async def test_stdout() -> None:
     """stdout should return a pipe returning the content of stdout."""
 
     @pipe
-    async def _echo(stdout: PipeWriter) -> Process[Any, Any]:
+    async def _echo(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, Any]:
         async def _wait(_: Any) -> Any:
             await stdout.write(b"didi")
 
         await stdout.write(b"Yodel")
-        return stdout, _wait
+        return stdout, stderr, _wait
 
     assert await (_echo() | STDOUT) == b"Yodeldidi"
