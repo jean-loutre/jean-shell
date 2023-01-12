@@ -13,7 +13,6 @@ from typing import (
     Awaitable,
     Callable,
     Concatenate,
-    Final,
     Generator,
     Generic,
     Iterable,
@@ -45,7 +44,7 @@ class MemoryPipeWriter:
     """A pipe writer writing to memory.
 
     When closing, content written to the stream will be available via the
-    `value` property . Used to collect stdout and stderr of pipes for further
+    `value` property . Used to collect out and err of pipes for further
     processing.
     """
 
@@ -190,15 +189,15 @@ class Pipe(Generic[In, Out]):
             assert not isinstance(right, Pipe)
             return await right(result)
 
-        async def _start(stdout: PipeWriter, stderr: PipeWriter) -> Process[Out, Next]:
-            return stdout, stderr, _wait
+        async def _start(out: PipeWriter, err: PipeWriter) -> Process[Out, Next]:
+            return out, err, _wait
 
         return Pipe(self, _start)
 
     async def run(
-        self: "Pipe[PipeStart, Out]", stdout: PipeWriter, stderr: PipeWriter
+        self: "Pipe[PipeStart, Out]", out: PipeWriter, err: PipeWriter
     ) -> Out:
-        stdin, stderr, wait = await self._start(stdout, stderr)
+        stdin, err, wait = await self._start(out, err)
         previous = self._previous
         if previous is None:
             # As self type is constrained so that only pipes that can accept
@@ -207,7 +206,7 @@ class Pipe(Generic[In, Out]):
             # PipeStart as input.
             result = await wait(PIPE_START)
         else:
-            previous_result = await previous.run(stdin, stderr)
+            previous_result = await previous.run(stdin, err)
             result = await wait(previous_result)
         return result
 
@@ -225,8 +224,8 @@ def pipe(
     func: Callable[Concatenate[PipeWriter, PipeWriter, P], Awaitable[Process[In, Next]]]
 ) -> Callable[P, Pipe[In, Next]]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> Pipe[In, Next]:
-        async def start(stdout: PipeWriter, stderr: PipeWriter) -> Process[In, Next]:
-            return await func(stdout, stderr, *args, **kwargs)
+        async def start(out: PipeWriter, err: PipeWriter) -> Process[In, Next]:
+            return await func(out, err, *args, **kwargs)
 
         return Pipe(None, start)
 
@@ -262,30 +261,30 @@ class _ConcatenatePipeWriter:
 
 
 def _concatenate(
-    start: RawIOBase | BufferedIOBase, stdout: PipeWriter, stderr: PipeWriter
+    start: RawIOBase | BufferedIOBase, out: PipeWriter, err: PipeWriter
 ) -> Process[T | PipeStart, T | PipeStart]:
-    writer = _ConcatenatePipeWriter(start, stdout)
+    writer = _ConcatenatePipeWriter(start, out)
 
     async def _wait(result: T | PipeStart) -> T | PipeStart:
         await writer.close()
         return result
 
-    return writer, stderr, _wait
+    return writer, err, _wait
 
 
 @pipe
 async def cat(
-    stdout: PipeWriter, stderr: PipeWriter, source: Path | str
+    out: PipeWriter, err: PipeWriter, source: Path | str
 ) -> Process[T | PipeStart, T | PipeStart]:
     if isinstance(source, str):
         source = Path(source)
-    return _concatenate(open(source, "rb"), stdout, stderr)
+    return _concatenate(open(source, "rb"), out, err)
 
 
 @pipe
 async def echo(
-    stdout: PipeWriter,
-    stderr: PipeWriter,
+    out: PipeWriter,
+    err: PipeWriter,
     content: bytes | str,
     encoding: str = "utf-8",
 ) -> Process[T | PipeStart, T | PipeStart]:
@@ -294,7 +293,7 @@ async def echo(
     else:
         byte_content = content
 
-    return _concatenate(BytesIO(byte_content), stdout, stderr)
+    return _concatenate(BytesIO(byte_content), out, err)
 
 
 class _LogPipeWriter:
@@ -322,30 +321,28 @@ class _LogPipeWriter:
 
 @pipe
 async def log(
-    stdout: PipeWriter,
-    stderr: PipeWriter,
+    out: PipeWriter,
+    err: PipeWriter,
     logger: Logger | str,
-    log_stdout: bool = True,
-    log_stderr: bool = True,
+    log_out: bool = True,
+    log_err: bool = True,
 ) -> Process[T | PipeStart, T | PipeStart]:
     if isinstance(logger, str):
         logger = getLogger(logger)
 
-    if log_stdout:
-        stdout = AggregatePipeWriter.merge(_LogPipeWriter(logger), stdout)
-    if log_stderr:
-        stderr = AggregatePipeWriter.merge(_LogPipeWriter(logger), stderr)
-    return stdout, stderr, forward_result
+    if log_out:
+        out = AggregatePipeWriter.merge(_LogPipeWriter(logger), out)
+    if log_err:
+        err = AggregatePipeWriter.merge(_LogPipeWriter(logger), err)
+    return out, err, forward_result
 
 
-async def _get_stdout(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, bytes]:
+@pipe
+async def stdout(out: PipeWriter, err: PipeWriter) -> Process[Any, bytes]:
     content = MemoryPipeWriter()
 
     async def _wait(_: Any) -> bytes:
         await content.close()
         return content.value
 
-    return AggregatePipeWriter.merge(stdout, content), stderr, _wait
-
-
-STDOUT: Final[Pipe[Any, bytes]] = Pipe(None, start=_get_stdout)
+    return AggregatePipeWriter.merge(out, content), err, _wait

@@ -7,7 +7,6 @@ from pytest import raises
 
 from jshell.core.pipe import (
     PIPE_START,
-    STDOUT,
     AggregatePipeWriter,
     MemoryPipeWriter,
     PipeWriter,
@@ -17,6 +16,7 @@ from jshell.core.pipe import (
     echo,
     log,
     pipe,
+    stdout,
 )
 
 
@@ -83,41 +83,41 @@ async def test_await_pipe() -> None:
     wait = AsyncMock(side_effect=_wait)
 
     @pipe
-    async def _pipe(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, object]:
-        await stdout.write(b"")
-        return stdout, stderr, wait
+    async def _pipe(out: PipeWriter, err: PipeWriter) -> Process[Any, object]:
+        await out.write(b"")
+        return out, err, wait
 
     assert result == await _pipe()
     wait.assert_awaited_once()
 
 
 async def test_pipe_combination() -> None:
-    """Combining pipes should pipe result and stdout through the pipe chain."""
+    """Combining pipes should pipe result and out through the pipe chain."""
 
     @pipe
-    async def _oh_shit(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, str]:
-        await stdout.write(b"no.")
+    async def _oh_shit(out: PipeWriter, err: PipeWriter) -> Process[Any, str]:
+        await out.write(b"no.")
 
         async def wait(_: Any) -> str:
             return "oh shit"
 
-        return stdout, stderr, wait
+        return out, err, wait
 
     @pipe
-    async def _exclaim(stdout: PipeWriter, stderr: PipeWriter) -> Process[str, str]:
-        await stdout.write(b"oh.")
+    async def _exclaim(out: PipeWriter, err: PipeWriter) -> Process[str, str]:
+        await out.write(b"oh.")
 
         async def wait(result: str) -> str:
             return f"{result} !!1"
 
-        return stdout, stderr, wait
+        return out, err, wait
 
     @pipe
-    async def _yell(_: PipeWriter, stderr: PipeWriter) -> Process[str, str]:
+    async def _yell(_: PipeWriter, err: PipeWriter) -> Process[str, str]:
         async def wait(result: str) -> str:
             return f"{result}".upper()
 
-        return out, stderr, wait
+        return out, err, wait
 
     out = MemoryPipeWriter()
 
@@ -132,11 +132,11 @@ async def test_pipe_to_function() -> None:
     """Combining pipe to function should pipe result of the command through it."""
 
     @pipe
-    async def _oh_shit(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, str]:
+    async def _oh_shit(out: PipeWriter, err: PipeWriter) -> Process[Any, str]:
         async def wait(value: Any) -> str:
             return "oh shit"
 
-        return stdout, stderr, wait
+        return out, err, wait
 
     async def _yell(result: str) -> str:
         return f"{result} !!1".upper()
@@ -145,35 +145,35 @@ async def test_pipe_to_function() -> None:
 
 
 async def test_cat(shared_datadir: Path) -> None:
-    """echo method should return a pipe writing content to stdout."""
+    """echo method should return a pipe writing content to out."""
     path = shared_datadir / "yodeldidoo"
-    assert await (cat(path) | STDOUT) == b"Yodeldidoo\n"
-    assert await (cat(str(path)) | STDOUT) == b"Yodeldidoo\n"
+    assert await (cat(path) | stdout()) == b"Yodeldidoo\n"
+    assert await (cat(str(path)) | stdout()) == b"Yodeldidoo\n"
 
 
 async def test_echo() -> None:
-    """echo method should return a pipe writing content to stdout."""
-    assert await (echo(b"Yodeldidoo") | STDOUT) == b"Yodeldidoo"
-    assert await (echo("Yodeldidoo") | STDOUT) == b"Yodeldidoo"
+    """echo method should return a pipe writing content to out."""
+    assert await (echo(b"Yodeldidoo") | stdout()) == b"Yodeldidoo"
+    assert await (echo("Yodeldidoo") | stdout()) == b"Yodeldidoo"
 
 
 async def test_log() -> None:
-    """echo method should return a pipe writing content to stdout."""
+    """echo method should return a pipe writing content to out."""
     logger = Mock()
 
     assert await (echo(b"Yodeldidoo\n") | log(logger))
     logger.info.assert_called_once_with("Yodeldidoo")
 
 
-async def test_stdout() -> None:
-    """stdout should return a pipe returning the content of stdout."""
+async def test_out() -> None:
+    """out should return a pipe returning the content of out."""
 
     @pipe
-    async def _echo(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, Any]:
+    async def _echo(out: PipeWriter, err: PipeWriter) -> Process[Any, Any]:
         async def _wait(_: Any) -> Any:
-            await stdout.write(b"didi")
+            await out.write(b"didi")
 
-        await stdout.write(b"Yodel")
-        return stdout, stderr, _wait
+        await out.write(b"Yodel")
+        return out, err, _wait
 
-    assert await (_echo() | STDOUT) == b"Yodeldidi"
+    assert await (_echo() | stdout()) == b"Yodeldidi"
