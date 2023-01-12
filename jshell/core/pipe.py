@@ -295,6 +295,15 @@ def _concatenate(
 
 
 @pipe
+async def cat(
+        stdout: PipeWriter, source: Path | str
+) -> Process[T | PipeStart, T | PipeStart]:
+    if isinstance(source, str):
+        source = Path(source)
+
+    return _concatenate(open(source, "rb"), stdout)
+
+@pipe
 async def echo(
     stdout: PipeWriter, content: bytes | str, encoding: str = "utf-8"
 ) -> Process[T | PipeStart, T | PipeStart]:

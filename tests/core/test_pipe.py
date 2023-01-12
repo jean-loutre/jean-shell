@@ -12,6 +12,7 @@ from jshell.core.pipe import (
     PipeWriter,
     Process,
     _NullPipeWriter,
+    cat,
     echo,
     pipe,
 )
@@ -141,23 +142,17 @@ async def test_pipe_to_function() -> None:
     assert await (_oh_shit() | _yell) == "OH SHIT !!1"
 
 
+async def test_cat(shared_datadir) -> None:
+    """echo method should return a pipe writing content to stdout."""
+    path = shared_datadir / "yodeldidoo"
+    assert await (cat(path) | STDOUT) == b"Yodeldidoo\n"
+    assert await (cat(str(path)) | STDOUT) == b"Yodeldidoo\n"
+
+
 async def test_echo() -> None:
     """echo method should return a pipe writing content to stdout."""
-    out: MemoryPipeWriter
-
-    async def _wait(value: Any) -> bytes:
-        await out.close()
-        return out.value
-
-    @pipe
-    async def _stdout(_: PipeWriter) -> Process[Any, bytes]:
-        return out, _wait
-
-    out = MemoryPipeWriter()
-    assert await (echo(b"Yodeldidoo") | _stdout()) == b"Yodeldidoo"
-
-    out = MemoryPipeWriter()
-    assert await (echo("Yodeldidoo") | _stdout()) == b"Yodeldidoo"
+    assert await (echo(b"Yodeldidoo") | STDOUT) == b"Yodeldidoo"
+    assert await (echo("Yodeldidoo") | STDOUT) == b"Yodeldidoo"
 
 
 async def test_stdout() -> None:
