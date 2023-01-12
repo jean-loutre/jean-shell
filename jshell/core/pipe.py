@@ -19,6 +19,7 @@ from typing import (
     ParamSpec,
     Protocol,
     TypeVar,
+    Final,
     cast,
     runtime_checkable,
 )
@@ -324,16 +325,54 @@ async def log(
     out: PipeWriter,
     err: PipeWriter,
     logger: Logger | str,
-    log_out: bool = True,
-    log_err: bool = True,
+    stdout: bool = True,  # pylint: disable=redefined-outer-name
+    stderr: bool = True,  # pylint: disable=redefined-outer-name
 ) -> Process[T | PipeStart, T | PipeStart]:
     if isinstance(logger, str):
         logger = getLogger(logger)
 
-    if log_out:
+    if stdout:
         out = AggregatePipeWriter.merge(_LogPipeWriter(logger), out)
-    if log_err:
+    if stderr:
         err = AggregatePipeWriter.merge(_LogPipeWriter(logger), err)
+    return out, err, forward_result
+
+
+class Redirect:
+    pass
+
+
+STDOUT: Final[Redirect] = Redirect()
+STDERR: Final[Redirect] = Redirect()
+NULL: Final[Redirect] = Redirect()
+
+
+@pipe
+async def redirect(
+    out: PipeWriter,
+    err: PipeWriter,
+    stdout: Redirect = STDOUT,  # pylint: disable=redefined-outer-name
+    stderr: Redirect = STDERR,  # pylint: disable=redefined-outer-name
+) -> Process[T | PipeStart, T | PipeStart]:
+    if stdout == STDOUT and stderr == STDOUT:
+        return (
+            AggregatePipeWriter.merge(out, err),
+            _NullPipeWriter(),
+            forward_result,
+        )
+    if stdout == STDERR and stderr == STDERR:
+        return (
+            _NullPipeWriter(),
+            AggregatePipeWriter.merge(out, err),
+            forward_result,
+        )
+    if stdout == STDERR and stderr == STDOUT:
+        return err, out, forward_result
+    if stdout == NULL:
+        out = _NullPipeWriter()
+    if stderr == NULL:
+        err = _NullPipeWriter()
+
     return out, err, forward_result
 
 
