@@ -7,8 +7,12 @@ from pytest import raises
 
 from jshell.core.pipe import (
     PIPE_START,
+    STDERR,
+    STDOUT,
     AggregatePipeWriter,
     MemoryPipeWriter,
+    PipeStart,
+    Pipe,
     PipeWriter,
     Process,
     _NullPipeWriter,
@@ -16,6 +20,7 @@ from jshell.core.pipe import (
     echo,
     log,
     pipe,
+    redirect,
     stdout,
 )
 
@@ -159,10 +164,28 @@ async def test_echo() -> None:
 
 async def test_log() -> None:
     """echo method should return a pipe writing content to out."""
-    logger = Mock()
 
-    assert await (echo(b"Yodeldidoo\n") | log(logger))
+    def _out(content: str) -> Pipe[PipeStart, PipeStart]:
+        return echo(content)
+
+    def _err(content: str) -> Pipe[PipeStart, PipeStart]:
+        return echo(content) | redirect(stdout=STDERR, stderr=STDOUT)
+
+    logger = Mock()
+    await (_out("Yodeldidoo\n") | log(logger))
     logger.info.assert_called_once_with("Yodeldidoo")
+
+    logger = Mock()
+    await (_err("Yodeldidoo\n") | log(logger))
+    logger.info.assert_called_once_with("Yodeldidoo")
+
+    logger = Mock()
+    await (_out("Yodeldidoo\n") | log(logger, stdout=False))
+    logger.info.assert_not_called()
+
+    logger = Mock()
+    await (_err("Yodeldidoo\n") | log(logger, stderr=False))
+    logger.info.assert_not_called()
 
 
 async def test_out() -> None:
