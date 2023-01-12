@@ -1,7 +1,7 @@
 """Streams test method."""
 from pathlib import Path
 from typing import Any, cast
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from pytest import raises
 
@@ -15,6 +15,7 @@ from jshell.core.pipe import (
     _NullPipeWriter,
     cat,
     echo,
+    log,
     pipe,
 )
 
@@ -154,6 +155,14 @@ async def test_echo() -> None:
     """echo method should return a pipe writing content to stdout."""
     assert await (echo(b"Yodeldidoo") | STDOUT) == b"Yodeldidoo"
     assert await (echo("Yodeldidoo") | STDOUT) == b"Yodeldidoo"
+
+
+async def test_log() -> None:
+    """echo method should return a pipe writing content to stdout."""
+    logger = Mock()
+
+    assert await (echo(b"Yodeldidoo\n") | log(logger))
+    logger.info.assert_called_once_with("Yodeldidoo")
 
 
 async def test_stdout() -> None:

@@ -6,7 +6,7 @@ asynchronous access to streams used in pipe piping in Jean-Shell.
 from asyncio import create_task, gather
 from io import BufferedIOBase, BytesIO, RawIOBase
 from itertools import chain
-from logging import Logger
+from logging import Logger, getLogger
 from pathlib import Path
 from typing import (
     Any,
@@ -135,29 +135,6 @@ class FilePipeWriter:
     async def close(self) -> None:
         """Close the underlying file."""
         await self._wrapper.close()
-
-
-class LogPipeWriter:
-    def __init__(self, log: Logger) -> None:
-        self._log = log
-        self._pending_line = ""
-
-    async def write(self, data: bytes) -> None:
-        string_content = self._pending_line + data.decode("utf-8")
-        self._pending_line = ""
-        lines = string_content.split("\n")
-
-        if string_content[-1] != "\n":
-            self._pending_line = lines.pop()
-
-        if len(lines) > 1 and lines[-1] == "":
-            lines.pop()
-
-        for line in lines:
-            self._log.info(line)
-
-    async def close(self) -> None:
-        pass
 
 
 # Here starts the generic mayem
@@ -318,6 +295,47 @@ async def echo(
         byte_content = content
 
     return _concatenate(BytesIO(byte_content), stdout, stderr)
+
+
+class _LogPipeWriter:
+    def __init__(self, logger: Logger) -> None:
+        self._logger = logger
+        self._pending_line = ""
+
+    async def write(self, data: bytes) -> None:
+        string_content = self._pending_line + data.decode("utf-8")
+        self._pending_line = ""
+        lines = string_content.split("\n")
+
+        if string_content[-1] != "\n":
+            self._pending_line = lines.pop()
+
+        if len(lines) > 1 and lines[-1] == "":
+            lines.pop()
+
+        for line in lines:
+            self._logger.info(line)
+
+    async def close(self) -> None:
+        pass
+
+
+@pipe
+async def log(
+    stdout: PipeWriter,
+    stderr: PipeWriter,
+    logger: Logger | str,
+    log_stdout: bool = True,
+    log_stderr: bool = True,
+) -> Process[T | PipeStart, T | PipeStart]:
+    if isinstance(logger, str):
+        logger = getLogger(logger)
+
+    if log_stdout:
+        stdout = AggregatePipeWriter.merge(_LogPipeWriter(logger), stdout)
+    if log_stderr:
+        stderr = AggregatePipeWriter.merge(_LogPipeWriter(logger), stderr)
+    return stdout, stderr, forward_result
 
 
 async def _get_stdout(stdout: PipeWriter, stderr: PipeWriter) -> Process[Any, bytes]:
