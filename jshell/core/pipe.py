@@ -13,6 +13,7 @@ from typing import (
     Awaitable,
     Callable,
     Concatenate,
+    Final,
     Generator,
     Generic,
     Iterable,
@@ -303,3 +304,16 @@ async def echo(
         byte_content = content
 
     return _concatenate(BytesIO(byte_content), stdout)
+
+
+async def _get_stdout(stdout: PipeWriter) -> Process[Any, bytes]:
+    content = MemoryPipeWriter()
+
+    async def _wait(_: Any) -> bytes:
+        await content.close()
+        return content.value
+
+    return AggregatePipeWriter.merge(stdout, content), _wait
+
+
+STDOUT: Final[Pipe[Any, bytes]] = Pipe(None, start=_get_stdout)

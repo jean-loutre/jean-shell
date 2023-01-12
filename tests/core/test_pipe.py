@@ -6,6 +6,7 @@ from pytest import raises
 
 from jshell.core.pipe import (
     PIPE_START,
+    STDOUT,
     AggregatePipeWriter,
     MemoryPipeWriter,
     PipeWriter,
@@ -157,3 +158,17 @@ async def test_echo() -> None:
 
     out = MemoryPipeWriter()
     assert await (echo("Yodeldidoo") | _stdout()) == b"Yodeldidoo"
+
+
+async def test_stdout() -> None:
+    """stdout should return a pipe returning the content of stdout."""
+
+    @pipe
+    async def _echo(stdout: PipeWriter) -> Process[Any, Any]:
+        async def _wait(_: Any) -> Any:
+            await stdout.write(b"didi")
+
+        await stdout.write(b"Yodel")
+        return stdout, _wait
+
+    assert await (_echo() | STDOUT) == b"Yodeldidi"
