@@ -9,14 +9,15 @@ from jshell.core.pipe import (
     PIPE_START,
     STDERR,
     STDOUT,
-    AggregatePipeWriter,
+    CombinedPipeWriter,
     MemoryPipeWriter,
-    PipeStart,
     Pipe,
+    PipeStart,
     PipeWriter,
     Process,
     _NullPipeWriter,
     cat,
+    combine_pipes,
     echo,
     log,
     pipe,
@@ -37,11 +38,11 @@ async def test_memory_pipe_writer() -> None:
     assert writer.value == b"Kweek kweek"
 
 
-async def test_aggregate_pipe_writer() -> None:
-    """An aggregate pipe writer should forward data to it's children."""
+async def test_combined_pipe_writer() -> None:
+    """An combined pipe writer should forward data to it's children."""
     _1 = AsyncMock()
     _2 = AsyncMock()
-    writer = AggregatePipeWriter(_1, _2)
+    writer = CombinedPipeWriter(_1, _2)
 
     await writer.write(b"Kweek kweek")
 
@@ -53,25 +54,25 @@ async def test_aggregate_pipe_writer() -> None:
     _2.close.assert_awaited_once()
 
 
-async def test_aggregate_pipe_writer_merge() -> None:
+async def test_combined_pipe_writer_merge() -> None:
     """A compound pipe writer merge function should drop useless writers."""
 
     null_pipe: PipeWriter = _NullPipeWriter()
     impl_pipe: PipeWriter = MemoryPipeWriter()
-    assert AggregatePipeWriter.merge(null_pipe, impl_pipe) == impl_pipe
-    assert AggregatePipeWriter.merge(impl_pipe, null_pipe) == impl_pipe
+    assert combine_pipes(null_pipe, impl_pipe) == impl_pipe
+    assert combine_pipes(impl_pipe, null_pipe) == impl_pipe
 
     for _1, _2 in [
         (
-            AggregatePipeWriter(MemoryPipeWriter()),
-            AggregatePipeWriter(MemoryPipeWriter()),
+            CombinedPipeWriter(MemoryPipeWriter()),
+            CombinedPipeWriter(MemoryPipeWriter()),
         ),
-        (AggregatePipeWriter(MemoryPipeWriter()), MemoryPipeWriter()),
-        (MemoryPipeWriter(), AggregatePipeWriter(MemoryPipeWriter())),
+        (CombinedPipeWriter(MemoryPipeWriter()), MemoryPipeWriter()),
+        (MemoryPipeWriter(), CombinedPipeWriter(MemoryPipeWriter())),
         (MemoryPipeWriter(), MemoryPipeWriter()),
     ]:
-        merged = AggregatePipeWriter.merge(cast(PipeWriter, _1), cast(PipeWriter, _2))
-        assert isinstance(merged, AggregatePipeWriter)
+        merged = combine_pipes(cast(PipeWriter, _1), cast(PipeWriter, _2))
+        assert isinstance(merged, CombinedPipeWriter)
         children = list(merged.children)
         assert isinstance(children[0], MemoryPipeWriter)
         assert isinstance(children[1], MemoryPipeWriter)

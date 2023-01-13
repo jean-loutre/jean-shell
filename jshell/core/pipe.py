@@ -13,13 +13,13 @@ from typing import (
     Awaitable,
     Callable,
     Concatenate,
+    Final,
     Generator,
     Generic,
     Iterable,
     ParamSpec,
     Protocol,
     TypeVar,
-    Final,
     cast,
     runtime_checkable,
 )
@@ -73,7 +73,7 @@ class MemoryPipeWriter:
             self._stream.close()
 
 
-class AggregatePipeWriter:
+class CombinedPipeWriter:
     """A pipe writer forwarding data to a list of child writers."""
 
     def __init__(self, *children: PipeWriter) -> None:
@@ -82,30 +82,6 @@ class AggregatePipeWriter:
     @property
     def children(self) -> Iterable[PipeWriter]:
         return self._children
-
-    @classmethod
-    def merge(cls, first: PipeWriter, second: PipeWriter) -> PipeWriter:
-        """Merge two pipe writers."""
-
-        if isinstance(first, _NullPipeWriter):
-            return second
-        if isinstance(second, _NullPipeWriter):
-            return first
-
-        children: set[PipeWriter] = set()
-
-        if isinstance(first, cls) and isinstance(second, cls):
-            children = set(chain.from_iterable([first.children, second.children]))
-        elif isinstance(first, cls):
-            children = set(first.children)
-            children.add(second)
-        elif isinstance(second, cls):
-            children = set(second.children)
-            children.add(first)
-        else:
-            children = set([first, second])
-
-        return cls(*children)
 
     async def write(self, data: bytes) -> None:
         """Write given bytes to the underlying memory stream.
@@ -117,6 +93,30 @@ class AggregatePipeWriter:
     async def close(self) -> None:
         """Saves the underlying BytesIO buffer, then closes it."""
         await gather(*[child.close() for child in self.children])
+
+
+def combine_pipes(first: PipeWriter, second: PipeWriter) -> PipeWriter:
+    """Merge two pipe writers."""
+
+    if isinstance(first, _NullPipeWriter):
+        return second
+    if isinstance(second, _NullPipeWriter):
+        return first
+
+    children: set[PipeWriter] = set()
+
+    if isinstance(first, CombinedPipeWriter) and isinstance(second, CombinedPipeWriter):
+        children = set(chain.from_iterable([first.children, second.children]))
+    elif isinstance(first, CombinedPipeWriter):
+        children = set(first.children)
+        children.add(second)
+    elif isinstance(second, CombinedPipeWriter):
+        children = set(second.children)
+        children.add(first)
+    else:
+        children = set([first, second])
+
+    return CombinedPipeWriter(*children)
 
 
 class FilePipeWriter:
@@ -332,9 +332,9 @@ async def log(
         logger = getLogger(logger)
 
     if stdout:
-        out = AggregatePipeWriter.merge(_LogPipeWriter(logger), out)
+        out = combine_pipes(_LogPipeWriter(logger), out)
     if stderr:
-        err = AggregatePipeWriter.merge(_LogPipeWriter(logger), err)
+        err = combine_pipes(_LogPipeWriter(logger), err)
     return out, err, forward_result
 
 
@@ -356,14 +356,14 @@ async def redirect(
 ) -> Process[T | PipeStart, T | PipeStart]:
     if stdout == STDOUT and stderr == STDOUT:
         return (
-            AggregatePipeWriter.merge(out, err),
+            combine_pipes(out, err),
             _NullPipeWriter(),
             forward_result,
         )
     if stdout == STDERR and stderr == STDERR:
         return (
             _NullPipeWriter(),
-            AggregatePipeWriter.merge(out, err),
+            combine_pipes(out, err),
             forward_result,
         )
     if stdout == STDERR and stderr == STDOUT:
@@ -384,4 +384,4 @@ async def stdout(out: PipeWriter, err: PipeWriter) -> Process[Any, bytes]:
         await content.close()
         return content.value
 
-    return AggregatePipeWriter.merge(out, content), err, _wait
+    return combine_pipes(out, content), err, _wait
