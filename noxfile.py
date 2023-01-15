@@ -56,14 +56,6 @@ def mypy(session: Session) -> None:
     session.run("mypy")
 
 
-@session("lint", "checks", "pre-commit")
-def pylint(session: Session) -> None:
-    """Run pylint"""
-    devenv(session)
-    session.install("pylint")
-    session.run("pylint", "-rn", "-sn", "-f", "parseable", "jshell", "tests")
-
-
 # testing
 @session("checks", "tests", python=["3.10"])
 def unit_tests(session: Session) -> None:
