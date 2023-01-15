@@ -2,11 +2,12 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from logging import Logger
-from typing import Callable, Iterator
+from typing import Any, Iterator
 
-from jshell.core.command import Command, Process
+from jshell.core.pipe import Pipe, PipeWriter, Process
 
-ProcessFactory = Callable[[str], Process]
+ShellProcess = Process[Any, int]
+ShellPipe = Pipe[Any, int]
 
 
 class Shell(ABC):
@@ -16,7 +17,7 @@ class Shell(ABC):
         self._log = log
         self._env: dict[str, str] = {}
 
-    def __call__(self, command: str) -> Command:
+    def __call__(self, command: str) -> ShellPipe:
         """Return a `Command` ready to be run.
 
         :param command: The command to run in this shell.
@@ -24,8 +25,11 @@ class Shell(ABC):
         :return: A `Command` instance that can be awaited to actually execute
                  the given command.
         """
-        process = self._create_process(command, env=self._env)
-        return Command(process, log=self._log)
+
+        async def _start(out: PipeWriter, err: PipeWriter) -> ShellProcess:
+            return await self._start_process(out, err, command, env=self._env)
+
+        return Pipe(None, start=_start)
 
     @contextmanager
     def env(self, **kwargs: str) -> Iterator[None]:
@@ -36,7 +40,9 @@ class Shell(ABC):
         self._env = old_env
 
     @abstractmethod
-    def _create_process(self, command: str, env: dict[str, str]) -> Process:
+    async def _start_process(
+        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+    ) -> Process[Any, int]:
         """Create a new process using this shell.
 
         :param command: The command to run in this shell.

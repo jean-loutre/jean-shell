@@ -1,6 +1,6 @@
 from jshell.apt import set_packages
 from jshell.core.shell import Shell
-from tests._mocks.mock_shell import mock_shell
+from tests._mocks.mock_shell import MockShell
 
 
 async def test_apt() -> None:
@@ -12,7 +12,7 @@ async def test_apt() -> None:
             source_list="deb http://debian.org stable main",
         )
 
-    async with mock_shell(_task) as sh:
+    async with MockShell(_task) as sh:
         p = await sh.next()
         assert p.command == "cat > /etc/apt/sources.list"
         assert await p.read_stdin() == b"deb http://debian.org stable main"

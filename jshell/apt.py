@@ -1,4 +1,4 @@
-from jshell.core.command import echo
+from jshell.core.pipe import decode, echo, stdout
 from jshell.core.shell import Shell
 
 
@@ -8,7 +8,7 @@ async def set_packages(
     if source_list is not None:
         await (echo(source_list) | sh("cat > /etc/apt/sources.list"))
 
-    installed_packages = str(await sh("apt-mark showmanual"))
+    installed_packages = await (sh("apt-mark showmanual") | stdout() | decode())
     if installed_packages:
         installed_packages = installed_packages.replace("\n", " ")
         await sh(f"apt-mark auto {installed_packages}")

@@ -385,3 +385,13 @@ async def stdout(out: PipeWriter, err: PipeWriter) -> Process[Any, bytes]:
         return content.value
 
     return combine_pipes(out, content), err, _wait
+
+
+@pipe
+async def decode(
+    out: PipeWriter, err: PipeWriter, encoding: str = "utf-8"
+) -> Process[bytes, str]:
+    async def _wait(result: bytes) -> str:
+        return result.decode(encoding)
+
+    return out, err, _wait

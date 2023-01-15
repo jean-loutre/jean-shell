@@ -2,19 +2,12 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from logging import Logger
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
-from asyncssh import (
-    SSHClientConnection,
-    SSHClientConnectionOptions,
-    SSHClientProcess,
-    SSHWriter,
-    connect,
-)
+from asyncssh import SSHClientConnection, SSHClientConnectionOptions, SSHWriter, connect
 from asyncssh.logging import SSHLogger
 
-from jshell.core.command import Process
-from jshell.core.pipe import PipeWriter
+from jshell.core.pipe import PipeWriter, Process
 from jshell.core.shell import Shell
 
 
@@ -40,19 +33,6 @@ class SshSettings:
             yield _SshShell(connection, log=log)
 
 
-class _SshShell(Shell):
-    def __init__(
-        self, connection: SSHClientConnection, log: Logger | None = None
-    ) -> None:
-        super().__init__(log=log)
-        self._connection = connection
-        if log:
-            self._connection._logger = SSHLogger(parent=log.getChild("ssh"))
-
-    def _create_process(self, command: str, env: dict[str, str]) -> Process:
-        return _SshProcess(self._connection, command, env)
-
-
 class _SshPipeWriter:
     def __init__(self, writer: SSHWriter[bytes]):
         self._writer = writer
@@ -66,35 +46,29 @@ class _SshPipeWriter:
         await self._writer.wait_closed()
 
 
-class _SshProcess:
+class _SshShell(Shell):
     def __init__(
-        self, connection: SSHClientConnection, command: str, env: dict[str, str]
-    ):
+        self, connection: SSHClientConnection, log: Logger | None = None
+    ) -> None:
+        super().__init__(log=log)
         self._connection = connection
-        self._command = command
-        self._env = env
-        self._process: SSHClientProcess[bytes] | None = None
+        if log:
+            self._connection._logger = SSHLogger(parent=log.getChild("ssh"))
 
-    async def start(self, stdout: PipeWriter) -> PipeWriter:
-        """Start the given SSH process.
-
-        :return: The returncode.
-        """
-        self._process = await self._connection.create_process(
-            self._command, stdout=stdout, env=self._env
+    async def _start_process(
+        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+    ) -> Process[Any, int]:
+        process = await self._connection.create_process(
+            command, stdout=out, stderr=err, env=env
         )
-        return _SshPipeWriter(self._process.stdin)
 
-    async def wait(self) -> int:
-        """Wait for the underlying SSHProcess to finish.
+        async def _wait(_: Any) -> int:
+            await process.wait_closed()
+            return_code = process.returncode
+            if return_code is None:
+                # TODO: Handle this better, None value is when process
+                # exits due to a signal.
+                return -1
+            return return_code
 
-        :return: The returncode.
-        """
-        assert self._process is not None
-        await self._process.wait_closed()
-        return_code = self._process.returncode
-        if return_code is None:
-            # TODO: Handle this better, None value is when process
-            # exits due to a signal.
-            return -1
-        return return_code
+        return _SshPipeWriter(process.stdin), err, _wait

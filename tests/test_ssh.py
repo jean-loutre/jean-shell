@@ -37,9 +37,11 @@ async def test_run(connect_mock: AsyncMock) -> None:
         async def create_process(
             _: str,
             stdout: PipeWriter,
+            stderr: PipeWriter,
             env: dict[str, str],  # pylint: disable=unused-argument
         ) -> AsyncMock:
             await stdout.close()
+            await stderr.close()
             return AsyncMock()
 
         create_process_mock = (
@@ -48,4 +50,6 @@ async def test_run(connect_mock: AsyncMock) -> None:
         create_process_mock.side_effect = create_process
 
         await ssh("tickle otter")
-        create_process_mock.assert_awaited_once_with("tickle otter", stdout=ANY, env={})
+        create_process_mock.assert_awaited_once_with(
+            "tickle otter", stdout=ANY, stderr=ANY, env={}
+        )

@@ -1,8 +1,8 @@
 """Shell wrapping all commands in sudo calls."""
 from typing import Any
 
-from jshell.core.command import Process
-from jshell.core.shell import Shell
+from jshell.core.pipe import PipeWriter
+from jshell.core.shell import Shell, ShellProcess
 
 
 class SudoShell(Shell):
@@ -19,9 +19,11 @@ class SudoShell(Shell):
         self._inner = inner
         self._user = user
 
-    def _create_process(self, command: str, env: dict[str, str]) -> Process:
+    async def _start_process(
+        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+    ) -> ShellProcess:
         if self._user is not None:
             command = f"-u {self._user} command"
-        return self._inner._create_process(  # pylint: disable=protected-access
-            f"sudo {command}", env
+        return await self._inner._start_process(  # pylint: disable=protected-access
+            out, err, f"sudo {command}", env
         )
