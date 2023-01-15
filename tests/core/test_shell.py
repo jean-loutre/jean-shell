@@ -1,17 +1,17 @@
 """Config unit tests."""
 from logging import Logger
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
-from jshell.core.pipe import PipeWriter
+from jshell.core.pipe import PipeWriter, echo
 from jshell.core.shell import Shell, ShellProcess
 
 
 class MockShell(Shell):
     """An shell usable to run commands on hosts."""
 
-    def __init__(self, log: Logger | None = None) -> None:
-        super().__init__(log=log)
+    def __init__(self, logger: Logger | None = None) -> None:
+        super().__init__(logger=logger)
         self.start = AsyncMock()
         self.start.return_value = (AsyncMock(), AsyncMock(), AsyncMock())
 
@@ -51,3 +51,28 @@ async def test_env() -> None:
     sh.start.reset_mock()
     await sh("power-weasel")
     sh.start.assert_called_once_with("power-weasel", {})
+
+
+async def test_log() -> None:
+    """Shell should setup logging correctly."""
+    logger = Mock()
+    sh = MockShell(logger=logger)
+
+    await (echo("Yodeldidoo\n") | sh(""))
+    logger.info.assert_called_with("Yodeldidoo")
+
+    logger.reset_mock()
+    with sh.log(None):
+        await (echo("Yodeldidoo\n") | sh(""))
+        logger.info.assert_not_called()
+
+    logger_override = Mock()
+    with sh.log(logger_override):
+        await (echo("Yodeldidoo\n") | sh(""))
+        logger.info.assert_not_called()
+        logger_override.info.assert_called_with("Yodeldidoo")
+
+    logger_override.reset_mock()
+    await (echo("Yodeldidoo\n") | sh(""))
+    logger.info.assert_called_with("Yodeldidoo")
+    logger_override.info.assert_not_called()

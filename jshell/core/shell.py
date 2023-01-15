@@ -13,8 +13,8 @@ ShellPipe = Pipe[Any, int]
 class Shell(ABC):
     """An shell usable to run commands on hosts."""
 
-    def __init__(self, log: Logger | None = None) -> None:
-        self._log = log
+    def __init__(self, logger: Logger | None = None) -> None:
+        self._logger = logger
         self._env: dict[str, str] = {}
 
     def __call__(self, command: str) -> ShellPipe:
@@ -29,7 +29,7 @@ class Shell(ABC):
         async def _start(out: PipeWriter, err: PipeWriter) -> ShellProcess:
             return await self._start_process(out, err, command, env=self._env)
 
-        return Pipe(None, start=_start)
+        return Pipe(None, start=_start, logger=self._logger)
 
     @contextmanager
     def env(self, **kwargs: str) -> Iterator[None]:
@@ -38,6 +38,13 @@ class Shell(ABC):
             self._env[key] = value
         yield
         self._env = old_env
+
+    @contextmanager
+    def log(self, logger: Logger | None) -> Iterator[None]:
+        old_logger = self._logger
+        self._logger = logger
+        yield
+        self._logger = old_logger
 
     @abstractmethod
     async def _start_process(

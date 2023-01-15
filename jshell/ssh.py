@@ -22,7 +22,7 @@ class SshSettings:
     """User to connect with."""
 
     @asynccontextmanager
-    async def connect(self, log: Logger | None = None) -> AsyncIterator[Shell]:
+    async def connect(self, logger: Logger | None = None) -> AsyncIterator[Shell]:
         """Open an ssh connection using this settings.
 
         :return: A `Shell` object usable to interact with the remote host.
@@ -30,7 +30,7 @@ class SshSettings:
         async with connect(
             self.host, options=SSHClientConnectionOptions(username=self.user)
         ) as connection:
-            yield _SshShell(connection, log=log)
+            yield _SshShell(connection, logger=logger)
 
 
 class _SshPipeWriter:
@@ -48,12 +48,12 @@ class _SshPipeWriter:
 
 class _SshShell(Shell):
     def __init__(
-        self, connection: SSHClientConnection, log: Logger | None = None
+        self, connection: SSHClientConnection, logger: Logger | None = None
     ) -> None:
-        super().__init__(log=log)
+        super().__init__(logger=logger)
         self._connection = connection
-        if log:
-            self._connection._logger = SSHLogger(parent=log.getChild("ssh"))
+        if logger:
+            self._connection._logger = SSHLogger(parent=logger.getChild("ssh"))
 
     async def _start_process(
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]

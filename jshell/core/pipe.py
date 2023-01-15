@@ -168,13 +168,24 @@ U = TypeVar("U")
 
 class Pipe(Generic[In, Out]):
     def __init__(
-        self, previous: "Pipe[In, Any] | None", start: ProcessFactory[Any, Out]
+        self,
+        previous: "Pipe[In, Any] | None",
+        start: ProcessFactory[Any, Out],
+        logger: Logger | None = None,
     ) -> None:
         self._previous = previous
         self._start = start
+        self._logger = logger
 
     def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
-        return self.run(_NullPipeWriter(), _NullPipeWriter()).__await__()
+        if self._logger is not None:
+            out: PipeWriter = _LogPipeWriter(self._logger)
+            err: PipeWriter = _LogPipeWriter(self._logger)
+        else:
+            out = _NullPipeWriter()
+            err = _NullPipeWriter()
+
+        return self.run(out, err).__await__()
 
     def __or__(self, right: "Pipable[Out, Next]") -> "Pipe[In, Next]":
         # Due to the dropping of PipeStart from the right pipe input and output
@@ -182,9 +193,9 @@ class Pipe(Generic[In, Out]):
         # than PIPE_START as input must not return PIPE_START as output.
         if isinstance(right, Pipe):
             if right._previous is None:
-                return Pipe(self, right._start)  # type: ignore
+                return Pipe(self, right._start, logger=right._logger)  # type: ignore
 
-            return Pipe(self | right._previous, right._start)  # type: ignore
+            return Pipe(self | right._previous, right._start, logger=right._logger)  # type: ignore
 
         async def _wait(result: Out) -> Next:
             assert not isinstance(right, Pipe)
