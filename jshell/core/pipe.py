@@ -3,7 +3,9 @@
 This module defines PipeWriter and PipeReader interfaces, meant to unify
 asynchronous access to streams used in pipe piping in Jean-Shell.
 """
+from abc import ABC, abstractmethod
 from asyncio import create_task, gather
+from collections import deque
 from io import BufferedIOBase, BytesIO, RawIOBase
 from itertools import chain
 from logging import Logger, getLogger
@@ -178,14 +180,7 @@ class Pipe(Generic[In, Out]):
         self._logger = logger
 
     def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
-        if self._logger is not None:
-            out: PipeWriter = _LogPipeWriter(self._logger)
-            err: PipeWriter = _LogPipeWriter(self._logger)
-        else:
-            out = _NullPipeWriter()
-            err = _NullPipeWriter()
-
-        return self.run(out, err).__await__()
+        return self.run(_NullPipeWriter(), _NullPipeWriter()).__await__()
 
     def __or__(self, right: "Pipable[Out, Next]") -> "Pipe[In, Next]":
         # Due to the dropping of PipeStart from the right pipe input and output
@@ -207,9 +202,15 @@ class Pipe(Generic[In, Out]):
         return Pipe(self, _start)
 
     async def run(
-        self: "Pipe[PipeStart, Out]", out: PipeWriter, err: PipeWriter
+        self: "Pipe[PipeStart, Out]", out: PipeWriter, err: PipeWriter, log: bool = True
     ) -> Out:
+        if log and self._logger is not None:
+            out = combine_pipes(out, _LogPipeWriter(self._logger))
+            err = combine_pipes(err, _LogPipeWriter(self._logger))
+            log = False  # Only log the right most pipe of the chain
+
         stdin, err, wait = await self._start(out, err)
+
         previous = self._previous
         if previous is None:
             # As self type is constrained so that only pipes that can accept
@@ -218,7 +219,7 @@ class Pipe(Generic[In, Out]):
             # PipeStart as input.
             result = await wait(PIPE_START)
         else:
-            previous_result = await previous.run(stdin, err)
+            previous_result = await previous.run(stdin, err, log)
             result = await wait(previous_result)
         return result
 
@@ -308,9 +309,8 @@ async def echo(
     return _concatenate(BytesIO(byte_content), out, err)
 
 
-class _LogPipeWriter:
-    def __init__(self, logger: Logger) -> None:
-        self._logger = logger
+class LinePipeWriter(ABC):
+    def __init__(self) -> None:
         self._pending_line = ""
 
     async def write(self, data: bytes) -> None:
@@ -325,10 +325,36 @@ class _LogPipeWriter:
             lines.pop()
 
         for line in lines:
-            self._logger.info(line)
+            self.write_line(line)
+
+    @abstractmethod
+    def write_line(self, line: str) -> None:
+        pass
 
     async def close(self) -> None:
         pass
+
+
+class _LogPipeWriter(LinePipeWriter):
+    def __init__(self, logger: Logger) -> None:
+        super().__init__()
+        self._logger = logger
+
+    def write_line(self, line: str) -> None:
+        self._logger.info(line)
+
+
+class TailPipeWriter(LinePipeWriter):
+    def __init__(self) -> None:
+        super().__init__()
+        self._tail: deque[str] = deque(maxlen=10)
+
+    @property
+    def tail(self) -> Iterable[str]:
+        return self._tail
+
+    def write_line(self, line: str) -> None:
+        self._tail.append(line)
 
 
 @pipe

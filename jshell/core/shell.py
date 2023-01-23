@@ -4,18 +4,52 @@ from contextlib import contextmanager
 from logging import Logger
 from typing import Any, Iterator
 
-from jshell.core.pipe import Pipe, PipeWriter, Process
+from jshell.core.pipe import (
+    Pipe,
+    PipeWriter,
+    Process,
+    TailPipeWriter,
+    combine_pipes,
+    pipe,
+)
 
 ShellProcess = Process[Any, int]
 ShellPipe = Pipe[Any, int]
 
 
+class ShellProcessException(Exception):
+    def __init__(self, command: str, return_code: int, stderr_tail: str) -> None:
+        super().__init__(
+            f"{command} returned {return_code}. Last stderr output:\n{stderr_tail}"
+        )
+        self.command = command
+        self.return_code = return_code
+        self.stderr_tail = stderr_tail
+
+
+@pipe
+async def _raise_on_error(
+    out: PipeWriter, err: PipeWriter, command: str
+) -> ShellProcess:
+    stderr_tail = TailPipeWriter()
+
+    async def _wait(result: int) -> int:
+        if result != 0:
+            raise ShellProcessException(command, result, "\n".join(stderr_tail.tail))
+        return result
+
+    return out, combine_pipes(err, stderr_tail), _wait
+
+
 class Shell(ABC):
     """An shell usable to run commands on hosts."""
 
-    def __init__(self, logger: Logger | None = None) -> None:
+    def __init__(
+        self, logger: Logger | None = None, raise_on_error: bool = True
+    ) -> None:
         self._logger = logger
         self._env: dict[str, str] = {}
+        self._raise_on_error = raise_on_error
 
     def __call__(self, command: str) -> ShellPipe:
         """Return a `Command` ready to be run.
@@ -29,7 +63,12 @@ class Shell(ABC):
         async def _start(out: PipeWriter, err: PipeWriter) -> ShellProcess:
             return await self._start_process(out, err, command, env=self._env)
 
-        return Pipe(None, start=_start, logger=self._logger)
+        pipe: ShellPipe = Pipe(None, start=_start, logger=self._logger)
+
+        if self._raise_on_error:
+            pipe = pipe | _raise_on_error(command)
+
+        return pipe
 
     @contextmanager
     def env(self, **kwargs: str) -> Iterator[None]:
@@ -45,6 +84,13 @@ class Shell(ABC):
         self._logger = logger
         yield
         self._logger = old_logger
+
+    @contextmanager
+    def raise_on_error(self, raise_on_error: bool) -> Iterator[None]:
+        old_value = self._raise_on_error
+        self._raise_on_error = raise_on_error
+        yield
+        self._raise_on_error = old_value
 
     @abstractmethod
     async def _start_process(

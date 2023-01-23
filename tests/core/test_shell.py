@@ -3,8 +3,10 @@ from logging import Logger
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
+from pytest import raises
+
 from jshell.core.pipe import PipeWriter, echo
-from jshell.core.shell import Shell, ShellProcess
+from jshell.core.shell import Shell, ShellProcess, ShellProcessException
 
 
 class MockShell(Shell):
@@ -76,3 +78,35 @@ async def test_log() -> None:
     await (echo("Yodeldidoo\n") | sh(""))
     logger.info.assert_called_with("Yodeldidoo")
     logger_override.info.assert_not_called()
+
+
+async def test_raise_on_error() -> None:
+    """Shell should raise an error when a process fails if it's configured to."""
+
+    class _FailShell(Shell):
+        async def _start_process(
+            self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+        ) -> ShellProcess:
+            await err.write(b"Wubba Lubba\n")
+
+            async def _wait(_: Any) -> int:
+                await err.write(b"Dub Dub\n")
+                return 1
+
+            return out, err, _wait
+
+    sh = _FailShell(raise_on_error=False)
+    await sh("fail")
+
+    sh = _FailShell()
+    with raises(
+        ShellProcessException,
+        match=r"fail returned 1. Last stderr output:\nWubba Lubba\nDub Dub",
+    ):
+        await sh("fail")
+
+    with sh.raise_on_error(False):
+        await sh("fail")
+
+    with raises(ShellProcessException):
+        await sh("fail")

@@ -42,7 +42,9 @@ async def test_run(connect_mock: AsyncMock) -> None:
         ) -> AsyncMock:
             await stdout.close()
             await stderr.close()
-            return AsyncMock()
+            process_mock = AsyncMock()
+            process_mock.returncode = 0
+            return process_mock
 
         create_process_mock = (
             connect_mock.return_value.__aenter__.return_value.create_process
