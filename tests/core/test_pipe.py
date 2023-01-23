@@ -18,8 +18,10 @@ from jshell.core.pipe import (
     _NullPipeWriter,
     cat,
     combine_pipes,
+    dump_json,
     echo,
     log,
+    parse_json,
     pipe,
     redirect,
     stdout,
@@ -201,3 +203,13 @@ async def test_out() -> None:
         return out, err, _wait
 
     assert await (_echo() | stdout()) == b"Yodeldidi"
+
+
+async def test_parse_json() -> None:
+    """parse_json should return decoded object read on stdout."""
+    assert await (echo('{"wubba": "lubba"}') | parse_json()) == {"wubba": "lubba"}
+
+
+async def test_dump_json() -> None:
+    """parse_json should return decoded object read on stdout."""
+    assert await (dump_json({"wubba": "lubba"}) | stdout()) == b'{"wubba": "lubba"}'

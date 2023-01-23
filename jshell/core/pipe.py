@@ -8,6 +8,7 @@ from asyncio import create_task, gather
 from collections import deque
 from io import BufferedIOBase, BytesIO, RawIOBase
 from itertools import chain
+from json import dumps, loads
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import (
@@ -432,3 +433,22 @@ async def decode(
         return result.decode(encoding)
 
     return out, err, _wait
+
+
+@pipe
+async def dump_json(
+    out: PipeWriter, err: PipeWriter, obj: Any
+) -> Process[T | PipeStart, T | PipeStart]:
+    json = dumps(obj).encode("utf-8")
+    return _concatenate(BytesIO(json), out, err)
+
+
+@pipe
+async def parse_json(out: PipeWriter, err: PipeWriter) -> Process[Any, object]:
+    capture = MemoryPipeWriter()
+
+    async def _wait(_: Any) -> Any:
+        await capture.close()
+        return loads(capture.value.decode("utf-8"))
+
+    return combine_pipes(out, capture), err, _wait
