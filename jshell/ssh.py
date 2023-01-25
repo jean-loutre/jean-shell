@@ -59,7 +59,7 @@ class _SshShell(Shell):
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
     ) -> Process[Any, int]:
         process = await self._connection.create_process(
-            command, stdout=out, stderr=err, env=env
+            command, stdout=out, stderr=err, env=env, encoding=None
         )
 
         async def _wait(_: Any) -> int:
