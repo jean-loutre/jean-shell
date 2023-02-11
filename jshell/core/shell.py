@@ -20,7 +20,7 @@ ShellPipe = Pipe[Any, int]
 class ShellProcessException(Exception):
     def __init__(self, command: str, return_code: int, stderr_tail: str) -> None:
         super().__init__(
-            f"{command} returned {return_code}. Last stderr output:\n{stderr_tail}"
+            f"{command} returned code {return_code}. Last stderr output:\n{stderr_tail}"
         )
         self.command = command
         self.return_code = return_code

@@ -1,12 +1,14 @@
 """Jean-Shell CLI wrapper."""
 from asyncio import run
-from logging import INFO, basicConfig
+from logging import INFO, basicConfig, getLogger
 
 from click import argument, command
 
 from jshell.core.config import load
 from jshell.core.inventory import Inventory
+from jshell.core.shell import ShellProcessException
 
+_LOG = getLogger(__name__)
 
 @command()
 @argument("inventory")
@@ -14,4 +16,7 @@ from jshell.core.inventory import Inventory
 def main(inventory: str, operation: str) -> None:
     """Jean-Shell CLI entry point point."""
     basicConfig(level=INFO)
-    return run(load(inventory, Inventory).run(operation))
+    try:
+        return run(load(inventory, Inventory).run(operation))
+    except ShellProcessException as ex:
+        _LOG.error("%s", ex)
