@@ -3,10 +3,12 @@ from jshell.core.shell import Shell
 
 
 async def set_packages(
-    sh: Shell, *packages: str, source_list: str | None = None
+    sh: Shell, *packages: str, sources_list: str | None = None
 ) -> None:
-    if source_list is not None:
-        await (echo(source_list) | sh("cat > /etc/apt/sources.list"))
+    if sources_list is not None:
+        await (echo(sources_list) | sh("cat > /etc/apt/sources.list"))
+
+    await sh(f"apt update")
 
     installed_packages = await (sh("apt-mark showmanual") | stdout() | decode())
     if installed_packages:
