@@ -341,7 +341,8 @@ class LinePipeWriter(ABC):
         pass
 
     async def close(self) -> None:
-        pass
+        if self._pending_line:
+            self.write_line(self._pending_line)
 
 
 class _LogPipeWriter(LinePipeWriter):
