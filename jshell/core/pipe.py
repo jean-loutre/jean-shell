@@ -181,7 +181,20 @@ class Pipe(Generic[In, Out]):
         self._logger = logger
 
     def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
-        return self.run(_NullPipeWriter(), _NullPipeWriter()).__await__()
+        logger: Logger | None = None
+        previous = self._previous
+        while logger is None and previous is not None:
+            logger = previous._logger
+            previous = previous._previous
+
+        if logger is None:
+            out: PipeWriter = _NullPipeWriter()
+            err: PipeWriter = _NullPipeWriter()
+        else:
+            out = _LogPipeWriter(logger.getChild("stdout"))
+            err = _LogPipeWriter(logger.getChild("stderr"))
+
+        return self.run(out, err).__await__()
 
     def __or__(self, right: "Pipable[Out, Next]") -> "Pipe[In, Next]":
         # Due to the dropping of PipeStart from the right pipe input and output
@@ -203,13 +216,8 @@ class Pipe(Generic[In, Out]):
         return Pipe(self, _start)
 
     async def run(
-        self: "Pipe[PipeStart, Out]", out: PipeWriter, err: PipeWriter, log: bool = True
+        self: "Pipe[PipeStart, Out]", out: PipeWriter, err: PipeWriter
     ) -> Out:
-        if log and self._logger is not None:
-            out = combine_pipes(out, _LogPipeWriter(self._logger))
-            err = combine_pipes(err, _LogPipeWriter(self._logger))
-            log = False  # Only log the right most pipe of the chain
-
         stdin, err, wait = await self._start(out, err)
 
         previous = self._previous
@@ -220,7 +228,7 @@ class Pipe(Generic[In, Out]):
             # PipeStart as input.
             result = await wait(PIPE_START)
         else:
-            previous_result = await previous.run(stdin, err, log)
+            previous_result = await previous.run(stdin, err)
             result = await wait(previous_result)
         return result
 
@@ -422,7 +430,7 @@ async def stdout(out: PipeWriter, err: PipeWriter) -> Process[Any, bytes]:
         await content.close()
         return content.value
 
-    return combine_pipes(out, content), err, _wait
+    return content, err, _wait
 
 
 @pipe
@@ -451,4 +459,4 @@ async def parse_json(out: PipeWriter, err: PipeWriter) -> Process[Any, object]:
         await capture.close()
         return loads(capture.value.decode("utf-8"))
 
-    return combine_pipes(out, capture), err, _wait
+    return capture, err, _wait
