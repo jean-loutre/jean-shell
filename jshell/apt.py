@@ -8,7 +8,7 @@ async def set_packages(
     if sources_list is not None:
         await (echo(sources_list) | sh("cat > /etc/apt/sources.list"))
 
-    await sh(f"apt update")
+    await sh("apt update")
 
     installed_packages = await (sh("apt-mark showmanual") | stdout() | decode())
     if installed_packages:

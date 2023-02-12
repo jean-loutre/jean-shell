@@ -46,6 +46,7 @@ class _SshPipeWriter:
         await self._writer.drain()
         await self._writer.wait_closed()
 
+
 class _SshShell(Shell):
     def __init__(
         self, connection: SSHClientConnection, logger: Logger | None = None

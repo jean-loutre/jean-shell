@@ -9,13 +9,17 @@ async def test_apt() -> None:
             sh,
             "python3-otter",
             "caiman-shredder",
-            source_list="deb http://debian.org stable main",
+            sources_list="deb http://debian.org stable main",
         )
 
     async with MockShell(_task) as sh:
         p = await sh.next()
         assert p.command == "cat > /etc/apt/sources.list"
         assert await p.read_stdin() == b"deb http://debian.org stable main"
+        await p.exit(0)
+
+        p = await sh.next()
+        assert p.command == "apt update"
         await p.exit(0)
 
         p = await sh.next()

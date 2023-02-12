@@ -1,6 +1,6 @@
 """Shell wrapping all commands in sudo calls."""
-from typing import Any
 from shlex import quote
+from typing import Any
 
 from jshell.core.pipe import PipeWriter
 from jshell.core.shell import Shell, ShellProcess

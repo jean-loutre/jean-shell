@@ -10,6 +10,7 @@ from jshell.core.shell import ShellProcessException
 
 _LOG = getLogger(__name__)
 
+
 @command()
 @argument("inventory")
 @argument("operation")

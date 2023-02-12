@@ -143,7 +143,7 @@ class FilePipeWriter:
 # Here starts the generic mayem
 
 In = TypeVar("In")
-Out = TypeVar("Out")
+Out = TypeVar("Out", contravariant=True)
 Next = TypeVar("Next")
 
 Wait = Callable[[In], Awaitable[Out]]
@@ -202,9 +202,9 @@ class Pipe(Generic[In, Out]):
         # than PIPE_START as input must not return PIPE_START as output.
         if isinstance(right, Pipe):
             if right._previous is None:
-                return Pipe(self, right._start, logger=right._logger)  # type: ignore
+                return Pipe(self, right._start, logger=right._logger)
 
-            return Pipe(self | right._previous, right._start, logger=right._logger)  # type: ignore
+            return Pipe(self | right._previous, right._start, logger=right._logger)
 
         async def _wait(result: Out) -> Next:
             assert not isinstance(right, Pipe)
@@ -233,11 +233,7 @@ class Pipe(Generic[In, Out]):
         return result
 
 
-Pipable = (
-    Pipe[Out, Next]
-    | Pipe[Out | PipeStart, Next | PipeStart]
-    | Callable[[Out], Awaitable[Next]]
-)
+Pipable = Pipe[Out, Next] | Callable[[Out], Awaitable[Next]]
 
 P = ParamSpec("P")
 

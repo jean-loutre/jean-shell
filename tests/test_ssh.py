@@ -39,7 +39,7 @@ async def test_run(connect_mock: AsyncMock) -> None:
             stdout: PipeWriter,
             stderr: PipeWriter,
             env: dict[str, str],  # pylint: disable=unused-argument
-            encoding: str # pylint: disable=unused-argument
+            encoding: str,  # pylint: disable=unused-argument
         ) -> AsyncMock:
             await stdout.close()
             await stderr.close()

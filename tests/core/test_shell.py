@@ -22,6 +22,9 @@ class MockShell(Shell):
     ) -> ShellProcess:
         await self.start(command, env)
 
+        if command == "echo":
+            await out.write(b"Yodeldidoo\n")
+
         async def _wait(_: Any) -> int:
             return 0
 
@@ -58,26 +61,30 @@ async def test_env() -> None:
 async def test_log() -> None:
     """Shell should setup logging correctly."""
     logger = Mock()
+    stdout_logger = Mock()
+    logger.getChild = Mock(return_value=stdout_logger)
     sh = MockShell(logger=logger)
 
-    await (echo("Yodeldidoo\n") | sh(""))
-    logger.info.assert_called_with("Yodeldidoo")
+    await sh("echo")
+    stdout_logger.info.assert_called_with("Yodeldidoo")
 
-    logger.reset_mock()
+    stdout_logger.reset_mock()
     with sh.log(None):
-        await (echo("Yodeldidoo\n") | sh(""))
-        logger.info.assert_not_called()
+        await sh("echo")
+        stdout_logger.info.assert_not_called()
 
     logger_override = Mock()
+    stdout_logger_override = Mock()
+    logger_override.getChild = Mock(return_value=stdout_logger_override)
     with sh.log(logger_override):
         await (echo("Yodeldidoo\n") | sh(""))
-        logger.info.assert_not_called()
-        logger_override.info.assert_called_with("Yodeldidoo")
+        stdout_logger.info.assert_not_called()
+        stdout_logger_override.info.assert_called_with("Yodeldidoo")
 
-    logger_override.reset_mock()
+    stdout_logger_override.reset_mock()
     await (echo("Yodeldidoo\n") | sh(""))
-    logger.info.assert_called_with("Yodeldidoo")
-    logger_override.info.assert_not_called()
+    stdout_logger.info.assert_called_with("Yodeldidoo")
+    stdout_logger_override.info.assert_not_called()
 
 
 async def test_raise_on_error() -> None:
@@ -101,7 +108,7 @@ async def test_raise_on_error() -> None:
     sh = _FailShell()
     with raises(
         ShellProcessException,
-        match=r"fail returned 1. Last stderr output:\nWubba Lubba\nDub Dub",
+        match=r"fail returned code 1. Last stderr output:\nWubba Lubba\nDub Dub",
     ):
         await sh("fail")
 
