@@ -42,9 +42,9 @@ class _SshPipeWriter:
         await self._writer.drain()
 
     async def close(self) -> None:
-        self._writer.close()
+        self._writer.write_eof()
+        await self._writer.drain()
         await self._writer.wait_closed()
-
 
 class _SshShell(Shell):
     def __init__(
