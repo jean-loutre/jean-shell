@@ -15,7 +15,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "jshell=jshell.__main__:main",
+            "jshell=jshell.cli.__main__:main",
         ],
         "jshell_config_loaders": [
             "py=jshell.core.config:py_loader",

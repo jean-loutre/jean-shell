@@ -1,5 +1,5 @@
-from jshell.apt import set_packages
 from jshell.core.shell import Shell
+from jshell.packaging.apt import set_packages
 from tests._mocks.mock_shell import MockShell
 
 

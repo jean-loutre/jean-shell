@@ -1,7 +1,7 @@
 """Config unit tests."""
 from unittest.mock import ANY, Mock
 
-from jshell.sudo import SudoShell
+from jshell.shells.sudo import SudoShell
 
 
 async def test_run() -> None:
