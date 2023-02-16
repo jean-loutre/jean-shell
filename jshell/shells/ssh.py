@@ -1,6 +1,5 @@
 """Connectors are usable to send commands to a target."""
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from logging import Logger
 from typing import Any, AsyncIterator
 
@@ -11,26 +10,18 @@ from jshell.core.pipe import PipeWriter, Process
 from jshell.core.shell import Shell
 
 
-@dataclass(frozen=True, kw_only=True)
-class SshSettings:
-    """Settings for an SSH connection."""
+@asynccontextmanager
+async def ssh(
+    host: str, user: str | None = None, logger: Logger | None = None
+) -> AsyncIterator[Shell]:
+    """Open an ssh connection.
 
-    host: str
-    """Host to connect to."""
-
-    user: str | None = None
-    """User to connect with."""
-
-    @asynccontextmanager
-    async def connect(self, logger: Logger | None = None) -> AsyncIterator[Shell]:
-        """Open an ssh connection using this settings.
-
-        :return: A `Shell` object usable to interact with the remote host.
-        """
-        async with connect(
-            self.host, options=SSHClientConnectionOptions(username=self.user)
-        ) as connection:
-            yield _SshShell(connection, logger=logger)
+    :return: A `Shell` object usable to interact with the remote host.
+    """
+    async with connect(
+        host, options=SSHClientConnectionOptions(username=user)
+    ) as connection:
+        yield _SshShell(connection, logger=logger)
 
 
 class _SshPipeWriter:
