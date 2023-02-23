@@ -1,5 +1,4 @@
 """Inventory test methods"""
-from dataclasses import dataclass
 from unittest.mock import AsyncMock
 
 from pytest import mark
@@ -25,9 +24,9 @@ async def test_task_decorator() -> None:
 
     deploy_mock = AsyncMock()
 
-    @dataclass(frozen=True)
     class _Peter(Target):
-        name: str = "peter"
+        def __init__(self) -> None:
+            super().__init__("peter")
 
         @task
         async def deploy(self, inventory: Inventory) -> None:

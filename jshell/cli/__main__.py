@@ -5,7 +5,6 @@ from logging import INFO, basicConfig, getLogger
 from click import argument, command
 
 from jshell.core.config import load
-from jshell.core.inventory import Inventory
 from jshell.core.shell import ShellProcessException
 
 _LOG = getLogger(__name__)
@@ -18,6 +17,6 @@ def main(inventory: str, operation: str) -> None:
     """Jean-Shell CLI entry point point."""
     basicConfig(level=INFO)
     try:
-        return run(load(inventory, Inventory).run(operation))
+        return run(load(inventory).run(operation))
     except ShellProcessException as ex:
         _LOG.error("%s", ex)
