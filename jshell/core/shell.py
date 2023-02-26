@@ -51,7 +51,7 @@ class Shell(ABC):
         self._env: dict[str, str] = {}
         self._raise_on_error = raise_on_error
 
-    def __call__(self, command: str) -> ShellPipe:
+    def __call__(self, command: str, raise_on_error: bool | None = None) -> ShellPipe:
         """Return a `Command` ready to be run.
 
         :param command: The command to run in this shell.
@@ -65,7 +65,7 @@ class Shell(ABC):
 
         pipe: ShellPipe = Pipe(None, start=_start, logger=self._logger)
 
-        if self._raise_on_error:
+        if (raise_on_error is None and self._raise_on_error) or raise_on_error:
             pipe = pipe | _raise_on_error(command)
 
         return pipe
