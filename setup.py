@@ -16,11 +16,7 @@ setup(
     entry_points={
         "console_scripts": [
             "jshell=jshell.cli.__main__:main",
-        ],
-        "jshell_config_loaders": [
-            "py=jshell.core.config:py_loader",
-            "ref=jshell.core.config:ref_loader",
-        ],
+        ]
     },
     license="WTFPL",
     classifiers=[
