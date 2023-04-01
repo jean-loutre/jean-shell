@@ -1,0 +1,9 @@
+* Implémenter un local shell
+* Ne pas passer logger, raise_on_error au shell a la construction, mais apres. Ca simplifiera l'héritage
+
+
+SE LANCER DANS L'INSTALL DU DNS YOUPI
+
+
+
+
