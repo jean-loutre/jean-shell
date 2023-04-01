@@ -3,7 +3,7 @@ from asyncio import StreamReader
 from contextlib import contextmanager
 from subprocess import PIPE
 from typing import Iterator
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 from jshell.core.pipe import STDERR, STDOUT, echo, redirect, stdout
 from jshell.shells.local import LocalShell
@@ -103,7 +103,11 @@ async def test_run() -> None:
         with sh.env(OTTER_SENSITIVITY="low"):
             assert (await sh("tickle otter")) == 1
             mock.assert_awaited_once_with(
-                "tickle otter", stdout=ANY, stderr=ANY, env={"OTTER_SENSITIVITY": "low"}
+                "tickle otter",
+                stdout=PIPE,
+                stderr=PIPE,
+                stdin=PIPE,
+                env={"OTTER_SENSITIVITY": "low"},
             )
 
 
