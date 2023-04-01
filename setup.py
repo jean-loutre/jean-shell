@@ -38,7 +38,7 @@ setup(
             "types-pyOpenSSL",
         ]
     },
-    author="Loutrox",
+    author="Jean-Loutre",
     author_email="jean-loutre@gmx.com",
     zip_safe=False,
     setuptools_git_versioning={
