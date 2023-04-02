@@ -2,7 +2,7 @@
 """jshell setup."""
 from pathlib import Path
 
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 
 setup(
     name="jshell",
@@ -10,9 +10,7 @@ setup(
     long_description=(Path(__file__).parent / "README.md").read_text(),
     long_description_content_type="text/markdown",
     keywords=["IT", "otters"],
-    packages=[
-        "jshell",
-    ],
+    packages=find_namespace_packages(include=["jshell.*"]),
     entry_points={
         "console_scripts": [
             "jshell=jshell.cli.__main__:main",
