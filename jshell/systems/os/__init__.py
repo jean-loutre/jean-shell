@@ -18,11 +18,11 @@ class Os(ABC):
         return SyncBatch(sh, self)
 
     @abstractmethod
-    def make_directory(self, sh: Shell, path: Path) -> ShellPipe:
+    def make_directory(self, sh: Shell, path: str | Path) -> ShellPipe:
         """Create a directory."""
 
     @abstractmethod
-    def write_file(self, sh: Shell, path: Path) -> ShellPipe:
+    def write_file(self, sh: Shell, path: str | Path) -> ShellPipe:
         """Write a file."""
 
 

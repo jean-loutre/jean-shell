@@ -6,11 +6,11 @@ from tests._mocks.mock_shell import MockShell
 
 
 class MockOs(Os):
-    def make_directory(self, sh: Shell, path: Path) -> ShellPipe:
+    def make_directory(self, sh: Shell, path: str | Path) -> ShellPipe:
         """Create a directory."""
         return sh(f"mkdir {path}")
 
-    def write_file(self, sh: Shell, path: Path) -> ShellPipe:
+    def write_file(self, sh: Shell, path: str | Path) -> ShellPipe:
         return sh(f"write {path}")
 
 
