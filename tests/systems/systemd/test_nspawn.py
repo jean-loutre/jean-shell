@@ -1,53 +1,27 @@
-from jshell.core.shell import Shell
+from typing import AsyncIterator
+
 from jshell.systems.systemd.nspawn import NSpawn
-from tests._mocks.mock_shell import MockShell
+from tests._mocks.mock_shell import MockProcess, MockShell, check_process
 
 
 async def test_create_machine() -> None:
     """A new machine should be created if it doesn't exists."""
 
-    async def _task(sh: Shell) -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("machinectl --output json list-images", stdout="[]")
+        yield check_process("machinectl --output json list", stdout="[]")
+        yield check_process(
+            "machinectl pull-tar --verify=checksum https://otter-os.tar peter"
+        )
+        yield check_process("mkdir -p /etc/systemd/nspawn")
+        yield check_process(
+            "cat > /etc/systemd/nspawn/peter.nspawn", expected_stdin="config content"
+        )
+        yield check_process("machinectl enable peter")
+        yield check_process("systemctl daemon-reload")
+        yield check_process("systemctl restart machines.target")
+
+    async with MockShell(_system_mock()) as sh:
         nspawn = NSpawn(sh)
         async with nspawn.configure() as config:
             config.add_machine("peter", "https://otter-os.tar", "config content")
-
-    async with MockShell(_task) as sh:
-        p = await sh.next()
-        assert p.command == "machinectl --output json list-images"
-        await p.write_stdout(b"[]")
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "machinectl --output json list"
-        await p.write_stdout(b"[]")
-        await p.exit(0)
-
-        p = await sh.next()
-        assert (
-            p.command
-            == "machinectl pull-tar --verify=checksum https://otter-os.tar peter"
-        )
-        await p.write_stdout(b"[]")
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "mkdir -p /etc/systemd/nspawn"
-        await p.write_stdout(b"[]")
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "cat > /etc/systemd/nspawn/peter.nspawn"
-        assert await p.read_stdin() == b"config content"
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "machinectl enable peter"
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "systemctl daemon-reload"
-        await p.exit(0)
-
-        p = await sh.next()
-        assert p.command == "systemctl restart machines.target"
-        await p.exit(0)

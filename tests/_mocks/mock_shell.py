@@ -1,12 +1,13 @@
-from asyncio import FIRST_COMPLETED, Event, Queue, create_task, wait
+from asyncio import Event, Queue, Task, create_task, gather
+from re import Pattern, compile
 from types import TracebackType
-from typing import Any, Callable, Coroutine, cast
+from typing import Any, AsyncIterator, Callable, Coroutine, Iterable
 
 from jshell.core.pipe import PipeWriter
 from jshell.core.shell import Shell, ShellProcess
 
 
-class _Stdin:
+class MockStdin:
     def __init__(self) -> None:
         self._buffer = bytearray()
         self._data_available = Event()
@@ -40,63 +41,73 @@ class _Stdin:
         self._closed.set()
 
 
-class MockProcess:
-    def __init__(
-        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
-    ):
-        self._command = command
-        self._env = env
-        self._return_code: int = 0
-        self._stdin = _Stdin()
-        self._stdout: PipeWriter = out
-        self._stderr: PipeWriter = err
-        self._terminated = Event()
-        self._waiting_exit = Event()
+MockProcess = Callable[
+    [str, PipeWriter, PipeWriter, MockStdin, dict[str, str]], Coroutine[Any, None, int]
+]
 
-    @property
-    def command(self) -> str:
-        return self._command
 
-    @property
-    def env(self) -> dict[str, str]:
-        return self._env
+def check_process(
+    expected_command: str | Pattern[str] = ".*",
+    stdout: str | bytes = "",
+    stderr: str | bytes = "",
+    expected_stdin: str | bytes = "",
+    return_code: int = 0,
+) -> MockProcess:
+    if isinstance(expected_command, str):
+        expected_command_pattern = compile(expected_command)
+    else:
+        expected_command_pattern = expected_command
 
-    @property
-    def stdin(self) -> _Stdin:
-        return self._stdin
+    def _encode(value: str | bytes) -> bytes:
+        if isinstance(value, str):
+            return value.encode("utf-8")
+        return value
 
-    async def read_stdin(self, n: int = -1) -> bytes:
-        return await self._stdin.read(n)
+    encoded_stdout = _encode(stdout)
+    encoded_stderr = _encode(stderr)
+    expected_stdin = _encode(expected_stdin)
 
-    async def write_stdout(self, data: bytes) -> None:
-        await self._stdout.write(data)
+    async def _run(
+        command: str,
+        out: PipeWriter,
+        err: PipeWriter,
+        stdin: MockStdin,
+        env: dict[str, str],
+    ) -> int:
+        assert expected_command_pattern.match(
+            command
+        ), f"Unexpected command : {command}, expected {expected_command_pattern}"
 
-    async def write_stderr(self, data: bytes) -> None:
-        await self._stderr.write(data)
+        async def _check_stdin() -> None:
+            stdin_content = await stdin.read()
+            assert (
+                stdin_content == expected_stdin
+            ), f"Unexpected stdin: {stdin_content!r}, expected {expected_stdin!r}"
 
-    async def wait(self, _: Any) -> int:
-        self._waiting_exit.set()
-        await self._stdin.close()
-        await self._terminated.wait()
-        return self._return_code
+        def _tasks() -> Iterable[Coroutine[Any, Any, None]]:
+            yield _check_stdin()
+            if encoded_stdout:
+                yield out.write(encoded_stdout)
+            if encoded_stderr:
+                yield err.write(encoded_stderr)
 
-    async def exit(self, return_code: int) -> None:
-        await self._waiting_exit.wait()
-        self._return_code = return_code
+        await gather(*_tasks())
 
-        await self._stdout.close()
-        await self._stderr.close()
+        return return_code
 
-        self._terminated.set()
+    return _run
 
 
 class MockShell(Shell):
-    def __init__(
-        self, consumer: Callable[[Shell], Coroutine[None, None, None]]
-    ) -> None:
+    def __init__(self, system_mock: AsyncIterator[MockProcess]) -> None:
         super().__init__()
         self._processes: Queue[MockProcess] = Queue()
-        self._consumer = create_task(consumer(self))
+
+        async def _run() -> None:
+            async for process in system_mock:
+                self._processes.put_nowait(process)
+
+        self._system_mock = create_task(_run())
 
     async def __aenter__(self) -> "MockShell":
         return self
@@ -108,25 +119,18 @@ class MockShell(Shell):
         exc_tb: TracebackType | None,
     ) -> None:
         if exc_type is None:
-            await self._consumer
-        assert self._processes.empty()
-
-    async def next(self) -> MockProcess:
-        next_process_task = create_task(self._processes.get())
-        tasks = [next_process_task, self._consumer]
-        done, _ = await wait(tasks, return_when=FIRST_COMPLETED)
-        while len(done) > 0:
-            task_done = done.pop()
-            if task_done.exception():
-                raise cast(Exception, task_done.exception())
-            if task_done == next_process_task:
-                return cast(MockProcess, task_done.result())
-
-        assert False, "MockShell consumer ended while waiting for it to launch process"
+            await self._system_mock
+            assert self._processes.empty()
 
     async def _start_process(
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
     ) -> ShellProcess:
-        process = MockProcess(out, err, command, env)
-        self._processes.put_nowait(process)
-        return process.stdin, err, process.wait
+        process = await self._processes.get()  # TODO: exception on timeout
+        stdin = MockStdin()
+        process_task: Task[int] = create_task(process(command, out, err, stdin, env))
+
+        async def _wait(_: Any) -> int:
+            await stdin.close()
+            return await process_task
+
+        return stdin, err, _wait
