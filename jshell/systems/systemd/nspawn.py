@@ -20,8 +20,8 @@ class NSpawn:
 
         for machine in all_machines - set(it.name for it in config.machines):
             if machine in running_machines:
-                await self._sh(f"machinectl poweroff {machine.name}")
-            await self._sh(f"machinectl remove {machine.name}")
+                await self._sh(f"machinectl poweroff {machine}")
+            await self._sh(f"machinectl remove {machine}")
 
         for machine in [it for it in config.machines if it.name not in all_machines]:
             await self._sh(
