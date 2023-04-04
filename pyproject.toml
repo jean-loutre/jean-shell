@@ -1,6 +1,40 @@
+[project]
+name = "jshell"
+version = "0.0.1"
+authors = [
+  {name = "Jean-Loutre", email ="jean-loutre@gmx.com"}
+]
+description = "Infrastructure as code framework"
+license = {text = "WTFPL"}
+readme = "README.md"
+dependencies = [
+  "click",
+  "asyncssh",
+  "aiofile"
+]
+
+[project.optional-dependencies]
+dev = [
+  "nox",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "pytest-datadir",
+  "types-click",
+  "types-pyOpenSSL",
+]
+
+[project.scripts]
+jshell = "jshell.cli.__main__:main"
+
+[build-system]
+requires = ["setuptools>=45"]
+
+[tool.setuptools.package-data]
+jshell = ["py.typed"]
+
 [tool.pylint.messages_control]
 max-line-length = 80
-
 disable = [
   "fixme",
   "invalid-name",
