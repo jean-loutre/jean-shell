@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from logging import Logger
+from shlex import quote
 from typing import Any, AsyncIterator, Iterable, Protocol
 
 from jshell.core.pipe import PipeWriter, parse_json
@@ -10,8 +12,8 @@ class NSpawn:
     def __init__(self, sh: Shell) -> None:
         self._sh = sh
 
-    def get_machine_shell(self, name: str) -> Shell:
-        return _NSpawnMachineShell(self._sh, name)
+    def get_machine_shell(self, name: str, logger: Logger | None = None) -> Shell:
+        return _NSpawnMachineShell(self._sh, name, logger=logger)
 
     @asynccontextmanager
     async def configure(self) -> AsyncIterator["NSpawnConfig"]:
@@ -95,6 +97,6 @@ class _NSpawnMachineShell(Shell):
         return await self._outer._start_process(  # pylint: disable=protected-access
             out,
             err,
-            f"systemd-run --pipe --wait --quiet --machine {self._machine} {command}",
+            f"systemd-run --pipe --wait --quiet --machine {self._machine} sh -c {quote(command)}",
             env,
         )

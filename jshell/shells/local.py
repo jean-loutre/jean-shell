@@ -31,7 +31,11 @@ class LocalShell(Shell):
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
     ) -> Process[Any, int]:
         process = await create_subprocess_shell(
-            command, stdout=PIPE, stderr=PIPE, stdin=PIPE, env=env
+            command,
+            stdout=PIPE,
+            stderr=PIPE,
+            stdin=PIPE,
+            env=env,
         )
 
         async def _pipe(src: StreamReader, dst: PipeWriter) -> None:

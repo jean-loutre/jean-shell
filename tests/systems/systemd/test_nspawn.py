@@ -104,6 +104,6 @@ async def test_get_machine_shell() -> None:
     shell_mock._start_process.assert_awaited_once_with(
         ANY,
         ANY,
-        "systemd-run --pipe --wait --quiet --machine peter kweek kweek",
+        "systemd-run --pipe --wait --quiet --machine peter sh -c 'kweek kweek'",
         {},
     )
