@@ -1,5 +1,6 @@
 from json import dumps
 from typing import AsyncIterator
+from unittest.mock import ANY, AsyncMock, Mock
 
 from jshell.systems.systemd.nspawn import NSpawn
 from tests._mocks.mock_shell import MockProcess, MockShell, check_process
@@ -87,3 +88,22 @@ async def test_stop_and_delete_machine() -> None:
         nspawn = NSpawn(sh)
         async with nspawn.configure():
             pass
+
+
+async def test_get_machine_shell() -> None:
+    """A new machine should be created if it doesn't exists."""
+
+    shell_mock = Mock()
+    shell_mock._start_process = AsyncMock(
+        return_value=(None, None, AsyncMock(return_value=0))
+    )
+
+    nspawn = NSpawn(shell_mock)
+    sh = nspawn.get_machine_shell("peter")
+    await sh("kweek kweek")
+    shell_mock._start_process.assert_awaited_once_with(
+        ANY,
+        ANY,
+        "systemd-run --pipe --wait --quiet --machine peter kweek kweek",
+        {},
+    )

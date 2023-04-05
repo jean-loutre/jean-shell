@@ -1,14 +1,17 @@
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Iterable, Protocol
 
-from jshell.core.pipe import parse_json
-from jshell.core.shell import Shell
+from jshell.core.pipe import PipeWriter, parse_json
+from jshell.core.shell import Shell, ShellProcess
 from jshell.systems.unix import Unix
 
 
 class NSpawn:
     def __init__(self, sh: Shell) -> None:
         self._sh = sh
+
+    def get_machine_shell(self, name: str) -> Shell:
+        return _NSpawnMachineShell(self._sh, name)
 
     @asynccontextmanager
     async def configure(self) -> AsyncIterator["NSpawnConfig"]:
@@ -78,3 +81,20 @@ class _NSpawnConfig:
         if isinstance(config, str):
             config = config.encode("utf-8")
         self._machines.append(_MachineConfig(name, base_image, config))
+
+
+class _NSpawnMachineShell(Shell):
+    def __init__(self, outer: Shell, machine: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._outer = outer
+        self._machine = machine
+
+    async def _start_process(
+        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+    ) -> ShellProcess:
+        return await self._outer._start_process(  # pylint: disable=protected-access
+            out,
+            err,
+            f"systemd-run --pipe --wait --quiet --machine {self._machine} {command}",
+            env,
+        )
