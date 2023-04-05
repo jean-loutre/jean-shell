@@ -69,6 +69,11 @@ async def test_log() -> None:
     stdout_logger.info.assert_called_with("Yodeldidoo")
 
     stdout_logger.reset_mock()
+    with sh.raise_on_error(False):
+        await sh("echo")
+    stdout_logger.info.assert_called_with("Yodeldidoo")
+
+    stdout_logger.reset_mock()
     with sh.log(None):
         await sh("echo")
         stdout_logger.info.assert_not_called()

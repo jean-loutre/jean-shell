@@ -181,7 +181,7 @@ class Pipe(Generic[In, Out]):
         self._logger = logger
 
     def __await__(self: "Pipe[PipeStart, Out]") -> Generator[None, None, Out]:
-        logger: Logger | None = None
+        logger: Logger | None = self._logger
         previous = self._previous
         while logger is None and previous is not None:
             logger = previous._logger
