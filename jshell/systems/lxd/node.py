@@ -56,7 +56,9 @@ class Node:
     async def get_container_shell(
         self, host_shell: Shell, name: str, **kwargs: Any
     ) -> Shell:
-        return _ContainerShell(self._lxc_path, host_shell, name, project=self._project**kwargs)
+        return _ContainerShell(
+            self._lxc_path, host_shell, name, project=self._project, **kwargs
+        )
 
     def _get_lxc_runner(self, host_shell: Shell) -> Callable[[str], ShellPipe]:
         def _run(command: str) -> ShellPipe:
@@ -72,7 +74,12 @@ class Node:
 
 class _ContainerShell(Shell):
     def __init__(
-            self, lxc_path: str, host_shell: Shell, container_name: str, project: Project | None = None, **kwargs: Any
+        self,
+        lxc_path: str,
+        host_shell: Shell,
+        container_name: str,
+        project: Project | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self._lxc_path = lxc_path
@@ -87,9 +94,13 @@ class _ContainerShell(Shell):
             [f"--env {key}={quote(value)}" for key, value in env.items()]
         )
 
+        project_parameter = ""
+        if self._project is not None:
+            project_parameter = f"--project {self._project.name}"
+
         return await self._host_shell._start_process(  # pylint: disable=protected-access
             out,
             err,
-            f"{self._lxc_path} exec {self._name} {env_parameters} -- sh -c {quote(command)}",
+            f"{self._lxc_path} {project_parameter} exec {self._name} {env_parameters} -- sh -c {quote(command)}",
             env={},
         )
