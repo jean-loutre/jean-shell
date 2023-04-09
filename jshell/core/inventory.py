@@ -16,9 +16,6 @@ _TASK_METHOD_FLAG = "__jshell_is_task"
 
 def task(function: TargetTask[TargetType]) -> TargetTask[TargetType]:
     """Register a Target instance method as a task.
-
-    :param function: Function to decorate.
-    :return:         Function, flagged as being a task.
     """
 
     setattr(function, _TASK_METHOD_FLAG, True)
@@ -46,8 +43,6 @@ class Target:
 
         The logger name will be jshell.runtime.inventory.target_name. It's
         usable to filter log messages.
-
-        :return: A Logger instance.
         """
         return getLogger(f"jshell.runtime.inventory.{self.name}")
 
@@ -65,8 +60,6 @@ class Inventory:
     @property
     def log(self) -> Logger:
         """Return a python Logger usable to report concerning the whole inventory.
-
-        :return: A Logger instance.
         """
         return getLogger("jshell.runtime.inventory")
 

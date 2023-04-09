@@ -70,11 +70,12 @@ def docs(session: Session) -> None:
     """Build documentation."""
     session.install(
         "mkdocs",
+        "mkdocs-awesome-pages-plugin",
         "mkdocs-gen-files",
         "mkdocs-literate-nav",
         "mkdocs-material",
         "mkdocs-section-index",
-        "mkdocstrings[python]",
+        "mkdocstrings[python]"
     )
     session.run("mkdocs", "build")
 

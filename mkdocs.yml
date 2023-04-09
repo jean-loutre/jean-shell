@@ -3,7 +3,7 @@ site_url: https://github.com/jean-loutre/jshell
 site_dir: .build/docs
 nav:
     - Home: index.md
-    - API Reference: api/
+    - ...
 
 repo_url: https://github.com/jean-loutre/jshell.git
 edit_uri: ""
