@@ -15,8 +15,7 @@ _TASK_METHOD_FLAG = "__jshell_is_task"
 
 
 def task(function: TargetTask[TargetType]) -> TargetTask[TargetType]:
-    """Register a Target instance method as a task.
-    """
+    """Register a Target instance method as a task."""
 
     setattr(function, _TASK_METHOD_FLAG, True)
     return function
@@ -59,8 +58,7 @@ class Inventory:
 
     @property
     def log(self) -> Logger:
-        """Return a python Logger usable to report concerning the whole inventory.
-        """
+        """Return a python Logger usable to report concerning the whole inventory."""
         return getLogger("jshell.runtime.inventory")
 
     async def run(self, task_name: str) -> None:

@@ -75,7 +75,7 @@ def docs(session: Session) -> None:
         "mkdocs-literate-nav",
         "mkdocs-material",
         "mkdocs-section-index",
-        "mkdocstrings[python]"
+        "mkdocstrings[python]",
     )
     session.run("mkdocs", "build")
 

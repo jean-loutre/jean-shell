@@ -98,9 +98,17 @@ class _ContainerShell(Shell):
         if self._project is not None:
             project_parameter = f"--project {self._project.name}"
 
-        return await self._host_shell._start_process(  # pylint: disable=protected-access
-            out,
-            err,
-            f"{self._lxc_path} {project_parameter} exec {self._name} {env_parameters} -- sh -c {quote(command)}",
-            env={},
+        return (
+            await self._host_shell._start_process(  # pylint: disable=protected-access
+                out,
+                err,
+                (
+                    f"{self._lxc_path}"
+                    f"{project_parameter}"
+                    f"exec {self._name}"
+                    f"{env_parameters}"
+                    f"-- sh -c {quote(command)}"
+                ),
+                env={},
+            )
         )
