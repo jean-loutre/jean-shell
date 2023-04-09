@@ -61,7 +61,7 @@ def mypy(session: Session) -> None:
 def unit_tests(session: Session) -> None:
     """Run unit tests."""
     devenv(session)
-    session.run("python", "-m", "pytest")
+    session.run("python", "-m", "pytest", "--cov=jshell")
 
 
 # build / publish

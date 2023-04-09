@@ -30,7 +30,12 @@ jobs:
           submodules: recursive
 
       - name: Install Dependencies
-        run: sudo pip install nox
+        run: sudo pip install nox coveralls
 
       - name: Run Tests
         run: nox -t tests
+
+      - name: Upload Coverage
+        run: coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
