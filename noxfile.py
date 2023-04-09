@@ -28,14 +28,14 @@ def fix_isort(session: Session) -> None:
 
 # linting
 @session("lint", "checks")
-def check_black(session: Session) -> None:
+def black(session: Session) -> None:
     """Check black formatting."""
     session.install("black")
     session.run("black", "--check", ".")
 
 
 @session("lint", "checks")
-def check_isort(session: Session) -> None:
+def isort(session: Session) -> None:
     """Check imports sorting"""
     session.install("isort")
     session.run("isort", "--check", ".")
