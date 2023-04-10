@@ -1,4 +1,4 @@
 """Dummy inventory."""
-from jshell.core.inventory import Inventory, Target
+from jshell.core.inventory import Inventory
 
-INVENTORY_OBJECT = Inventory(targets=[Target(name="peter")])
+INVENTORY_OBJECT = Inventory()
