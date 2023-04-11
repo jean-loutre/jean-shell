@@ -22,6 +22,12 @@ class Instance(Object):
         self._config.update(dict(**override))
         await (self._dump() | self._cli(f"config edit {self.name}"))
 
+    async def start(self) -> None:
+        await self._cli(f"start {self.name}")
+
+    async def stop(self) -> None:
+        await self._cli(f"stop {self.name}")
+
     def get_shell(self, **kwargs: Any) -> Shell:
         return _InstanceShell(self._cli, self.name, **kwargs)
 

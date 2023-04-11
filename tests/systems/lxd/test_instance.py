@@ -6,6 +6,18 @@ from jshell.systems.lxd.cli import LxcCli
 from tests._mocks.mock_shell import MockProcess, MockShell, check_process
 
 
+async def test_start_stop() -> None:
+    async def _mock_default() -> AsyncIterator[MockProcess]:
+        yield check_process("lxc start peter")
+        yield check_process("lxc stop peter")
+
+    async with MockShell(_mock_default()) as sh:
+        cli = LxcCli(sh)
+        instance = Instance(cli, "peter")
+        await instance.start()
+        await instance.stop()
+
+
 async def test_get_shell() -> None:
     async def _mock_default() -> AsyncIterator[MockProcess]:
         yield check_process("lxc exec peter -- sh -c 'kweek kweek'")
