@@ -52,7 +52,7 @@ def flake8(session: Session) -> None:
 def mypy(session: Session) -> None:
     """Run Mypy"""
     devenv(session)
-    session.install("mypy")
+    session.install("mypy", "types-PyYAML", "types-click", "types-pyOpenSSL")
     session.run("mypy")
 
 
