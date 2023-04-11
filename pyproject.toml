@@ -10,7 +10,8 @@ readme = "README.md"
 dependencies = [
   "click",
   "asyncssh",
-  "aiofile"
+  "aiofile",
+  "pyyaml"
 ]
 
 [project.optional-dependencies]

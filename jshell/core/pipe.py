@@ -28,6 +28,9 @@ from typing import (
 )
 
 from aiofile import BinaryFileWrapper, async_open
+from yaml import Dumper, Loader
+from yaml import dump as yaml_dump
+from yaml import load as yaml_load
 
 
 @runtime_checkable
@@ -455,5 +458,24 @@ async def parse_json(out: PipeWriter, err: PipeWriter) -> Process[Any, object]:
     async def _wait(_: Any) -> Any:
         await capture.close()
         return loads(capture.value.decode("utf-8"))
+
+    return capture, err, _wait
+
+
+@pipe
+async def dump_yaml(
+    out: PipeWriter, err: PipeWriter, obj: Any
+) -> Process[T | PipeStart, T | PipeStart]:
+    yaml_content = yaml_dump(obj, Dumper=Dumper).encode("utf-8")
+    return _concatenate(BytesIO(yaml_content), out, err)
+
+
+@pipe
+async def parse_yaml(out: PipeWriter, err: PipeWriter) -> Process[Any, object]:
+    capture = MemoryPipeWriter()
+
+    async def _wait(_: Any) -> Any:
+        await capture.close()
+        return yaml_load(capture.value.decode("utf-8"), Loader=Loader)
 
     return capture, err, _wait

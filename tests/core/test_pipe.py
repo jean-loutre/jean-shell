@@ -19,9 +19,11 @@ from jshell.core.pipe import (
     cat,
     combine_pipes,
     dump_json,
+    dump_yaml,
     echo,
     log,
     parse_json,
+    parse_yaml,
     pipe,
     redirect,
     stdout,
@@ -213,3 +215,18 @@ async def test_parse_json() -> None:
 async def test_dump_json() -> None:
     """parse_json should return decoded object read on stdout."""
     assert await (dump_json({"wubba": "lubba"}) | stdout()) == b'{"wubba": "lubba"}'
+
+
+async def test_parse_yaml() -> None:
+    """parse_json should return decoded object read on stdout."""
+    assert await (echo("wubba: [lubba, dub, dub]") | parse_yaml()) == {
+        "wubba": ["lubba", "dub", "dub"]
+    }
+
+
+async def test_dump_yaml() -> None:
+    """dump_yaml should return decoded object read on stdout."""
+    assert (
+        await (dump_yaml({"wubba": ["lubba", "dub", "dub"]}) | stdout())
+        == b"wubba:\n- lubba\n- dub\n- dub\n"
+    )
