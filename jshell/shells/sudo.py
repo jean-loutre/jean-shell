@@ -24,7 +24,10 @@ class SudoShell(Shell):
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
     ) -> ShellProcess:
         if self._user is not None:
-            command = f"-u {self._user} sh -c {quote(command)}"
+            command = f"sudo -u {self._user} sh -c {quote(command)}"
+        else:
+            command = f"sudo sh -c {quote(command)}"
+
         return await self._inner._start_process(  # pylint: disable=protected-access
-            out, err, f"sudo sh -c {quote(command)}", env
+            out, err, command, env
         )
