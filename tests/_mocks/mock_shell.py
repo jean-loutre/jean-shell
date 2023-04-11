@@ -125,6 +125,11 @@ class MockShell(Shell):
     async def _start_process(
         self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
     ) -> ShellProcess:
+        if self._system_mock.done():
+            exception = self._system_mock.exception()
+            if exception:
+                raise exception
+
         process = await self._processes.get()  # TODO: exception on timeout
         stdin = MockStdin()
         process_task: Task[int] = create_task(process(command, out, err, stdin, env))

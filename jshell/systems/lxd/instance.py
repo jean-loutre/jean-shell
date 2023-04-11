@@ -1,6 +1,10 @@
+from shlex import quote
 from typing import Any
 
-from jshell.systems.lxd.object import LxcCommand, Object
+from jshell.core.pipe import PipeWriter, parse_yaml
+from jshell.core.shell import Shell, ShellProcess
+from jshell.systems.lxd.cli import LxcCli
+from jshell.systems.lxd.object import Object
 
 
 class Instance(Object):
@@ -9,17 +13,40 @@ class Instance(Object):
     subcommand = ""
     ignore_keys = ("image",)
 
-    def __init__(self, name: str, image: str = "", **kwargs: Any) -> None:
-        super().__init__(name, **kwargs)
-        self._image = image
+    async def load(self) -> None:
+        name = self.name
+        self._config = await (self._cli(f"config show {self.name}") | parse_yaml())
+        self._config["name"] = name
 
-    async def create(self, lxc: LxcCommand) -> None:
-        await (self._dump() | lxc(f"launch {self._image} {self.name}"))
+    async def save(self, **override: Any) -> None:
+        self._config.update(dict(**override))
+        await (self._dump() | self._cli(f"config edit {self.name}"))
 
-    async def delete(self, lxc: LxcCommand) -> None:
-        await lxc(f"delete --force {self.name}")
+    def get_shell(self, **kwargs: Any) -> Shell:
+        return _InstanceShell(self._cli, self.name, **kwargs)
 
-    async def save(self, lxc: LxcCommand) -> None:
-        await (self._dump() | lxc(f"config edit {self.name}"))
-        if self.status == "Stopped":
-            await lxc(f"start {self.name}")
+
+class _InstanceShell(Shell):
+    def __init__(
+        self,
+        cli: LxcCli,
+        container_name: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._cli = cli
+        self._name = container_name
+
+    async def _start_process(
+        self, out: PipeWriter, err: PipeWriter, command: str, env: dict[str, str]
+    ) -> ShellProcess:
+        env_parameters = "".join(
+            [f" --env {key}={quote(value)}" for key, value in env.items()]
+        )
+
+        return await self._cli._start_process(  # pylint: disable=protected-access
+            out,
+            err,
+            f"exec {self._name}{env_parameters} -- sh -c {quote(command)}",
+            env={},
+        )
