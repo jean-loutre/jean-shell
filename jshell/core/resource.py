@@ -1,4 +1,3 @@
-"""Shared resource allow to share code between tasks."""
 from asyncio import Lock
 from types import TracebackType
 from typing import AsyncContextManager, Callable, Generic, TypeVar
@@ -6,7 +5,7 @@ from typing import AsyncContextManager, Callable, Generic, TypeVar
 T = TypeVar("T")
 
 
-class SharedResource(Generic[T]):
+class Resource(Generic[T]):
     def __init__(self, loader: Callable[[], AsyncContextManager[T]]) -> None:
         self._loader = loader
         self._context_manager: AsyncContextManager[T] | None = None

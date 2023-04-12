@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from unittest.mock import Mock
 
-from jshell.core.shared_resource import SharedResource
+from jshell.core.resource import Resource
 
 
 async def test_acquire_release() -> None:
@@ -17,7 +17,7 @@ async def test_acquire_release() -> None:
         yield object()
         cleanup()
 
-    otter_resource = SharedResource(load_otter)
+    otter_resource = Resource(load_otter)
 
     async with otter_resource as otter_1:
         load.assert_called_once()
