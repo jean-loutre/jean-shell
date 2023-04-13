@@ -6,7 +6,7 @@ from typing import Iterator
 from unittest.mock import AsyncMock, patch
 
 from jshell.core.pipe import STDERR, STDOUT, echo, redirect, stdout
-from jshell.shells.local import LocalShell
+from jshell.shells.local import local_shell
 
 
 class _StreamWriterMock:
@@ -97,41 +97,39 @@ def mock_create_process(
 
 
 async def test_run() -> None:
-    """LocalShell should call create_subprocess_shell."""
     with mock_create_process(return_code=1) as mock:
-        sh = LocalShell(raise_on_error=False)
-        with sh.env(OTTER_SENSITIVITY="low"):
-            assert (await sh("tickle otter")) == 1
-            mock.assert_awaited_once_with(
-                "tickle otter",
-                stdout=PIPE,
-                stderr=PIPE,
-                stdin=PIPE,
-                env={"OTTER_SENSITIVITY": "low"},
-            )
+        async with local_shell() as sh:
+            with sh.raise_on_error(False):
+                with sh.env(OTTER_SENSITIVITY="low"):
+                    assert (await sh("tickle otter")) == 1
+                    mock.assert_awaited_once_with(
+                        "tickle otter",
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        stdin=PIPE,
+                        env={"OTTER_SENSITIVITY": "low"},
+                    )
 
 
 async def test_stdout() -> None:
-    """LocalShell should forward subprocess stdout."""
     with mock_create_process(stdout_data=b"kweek kweek"):
-        sh = LocalShell()
-        out = await (sh("tickle otter") | stdout())
-        assert out == b"kweek kweek"
+        async with local_shell() as sh:
+            out = await (sh("tickle otter") | stdout())
+            assert out == b"kweek kweek"
 
 
 async def test_stderr() -> None:
-    """LocalShell should forward subprocess stderr."""
     with mock_create_process(stderr_data=b"kweek kweek"):
-        sh = LocalShell()
-        out = await (
-            sh("tickle otter") | redirect(stdout=STDERR, stderr=STDOUT) | stdout()  # type: ignore
-        )
-        assert out == b"kweek kweek"
+        async with local_shell() as sh:
+            out = await (
+                sh("tickle otter") | redirect(stdout=STDERR, stderr=STDOUT) | stdout()  # type: ignore
+            )
+            assert out == b"kweek kweek"
 
 
 async def test_stdin() -> None:
     """LocalShell should write to subprocess stdin."""
     with mock_create_process(stderr_data=b"kweek kweek") as mock:
-        sh = LocalShell()
-        await (echo(b"kweek kweek") | sh("tickle otter"))
-        assert mock.return_value.stdin.data == b"kweek kweek"
+        async with local_shell() as sh:
+            await (echo(b"kweek kweek") | sh("tickle otter"))
+            assert mock.return_value.stdin.data == b"kweek kweek"

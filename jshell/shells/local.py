@@ -5,7 +5,12 @@ from subprocess import PIPE
 from typing import Any
 
 from jshell.core.pipe import PipeWriter, Process
+from jshell.core.resource import Resource, constant_resource
 from jshell.core.shell import Shell
+
+
+def local_shell(logger: Logger | None = None) -> Resource[Shell]:
+    return constant_resource(_LocalShell(logger))
 
 
 class _ProcessPipeWriter(PipeWriter):
@@ -21,7 +26,7 @@ class _ProcessPipeWriter(PipeWriter):
         await self._writer.wait_closed()
 
 
-class LocalShell(Shell):
+class _LocalShell(Shell):
     def __init__(
         self, logger: Logger | None = None, raise_on_error: bool = False
     ) -> None:
