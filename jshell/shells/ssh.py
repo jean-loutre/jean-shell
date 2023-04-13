@@ -1,5 +1,4 @@
 """Connectors are usable to send commands to a target."""
-from contextlib import asynccontextmanager
 from logging import Logger
 from typing import Any, AsyncIterator
 
@@ -7,10 +6,11 @@ from asyncssh import SSHClientConnection, SSHClientConnectionOptions, SSHWriter,
 from asyncssh.logging import SSHLogger
 
 from jshell.core.pipe import PipeWriter, Process
+from jshell.core.resource import resource
 from jshell.core.shell import Shell
 
 
-@asynccontextmanager
+@resource
 async def ssh(
     host: str, user: str | None = None, logger: Logger | None = None
 ) -> AsyncIterator[Shell]:
