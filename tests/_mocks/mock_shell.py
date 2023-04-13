@@ -4,6 +4,7 @@ from types import TracebackType
 from typing import Any, AsyncIterator, Callable, Coroutine, Iterable
 
 from jshell.core.pipe import PipeWriter
+from jshell.core.resource import Resource, constant_resource
 from jshell.core.shell import Shell, ShellProcess
 
 
@@ -139,3 +140,7 @@ class MockShell(Shell):
             return await process_task
 
         return stdin, err, _wait
+
+
+def mock_shell(system_mock: AsyncIterator[MockProcess]) -> Resource[Shell]:
+    return constant_resource(MockShell(system_mock))
