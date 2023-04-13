@@ -1,6 +1,7 @@
-from typing import Any, Iterable, Type, TypeVar, cast
+from typing import Any, AsyncIterator, Iterable, Type, TypeVar, cast
 
 from jshell.core.pipe import dump_yaml, parse_yaml
+from jshell.core.resource import Resource, resource
 from jshell.core.shell import Shell
 from jshell.systems.lxd.cli import LxcCli
 from jshell.systems.lxd.instance import Instance
@@ -13,26 +14,30 @@ from jshell.systems.lxd.storage import Storage
 TObject = TypeVar("TObject", bound="Object")
 
 
+@resource
+async def lxd_node(
+    sh: Resource[Shell],
+    lxc_path: str = "lxc",
+    project: str | None = None,
+) -> AsyncIterator["Node"]:
+    async with sh as loaded_sh:
+        node = Node(loaded_sh, lxc_path, project)
+        if project is not None:
+            await node.ensure_project(project)
+        yield node
+
+
 class Node:
     """LXDConfiguration settings."""
 
     def __init__(
         self,
         sh: Shell,
-        lxc_path: str = "lxc",
-        project: str | None = None,
+        lxc_path: str,
+        project: str | None,
     ) -> None:
         self._objects: dict[Type[Object], list[Object]] = {}
         self._cli = LxcCli(sh, lxc_path, project)
-
-    @staticmethod
-    async def load(
-        sh: Shell, lxc_path: str = "lxc", project: str | None = None
-    ) -> "Node":
-        node = Node(sh, lxc_path, project)
-        if project is not None:
-            await node.ensure_project(project)
-        return node
 
     async def ensure_instance(self, name: str, image: str, **config: Any) -> Instance:
         instance = await self.get_object(Instance, name)

@@ -1,9 +1,9 @@
 """LXD Object unit tests."""
 from typing import AsyncIterator
 
-from jshell.systems.lxd import Node
+from jshell.systems.lxd import lxd_node
 from jshell.systems.lxd.object import Object
-from tests._mocks.mock_shell import MockProcess, MockShell, check_process
+from tests._mocks.mock_shell import MockProcess, check_process, mock_shell
 
 
 async def test_load_with_project() -> None:
@@ -15,8 +15,9 @@ async def test_load_with_project() -> None:
         yield check_process("lxc --project peter project create peter")
         yield check_process("lxc --project peter project show peter", stdout="{}")
 
-    async with MockShell(_mock_cli()) as sh:
-        await Node.load(sh, project="peter")
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh, project="peter"):
+        pass
 
 
 async def test_ensure_instance() -> None:
@@ -39,8 +40,8 @@ async def test_ensure_instance() -> None:
         )
         yield check_process("lxc config show steven", stdout="{status: happy}")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         instance = await node.ensure_instance("peter", "debian", power="12GW")
         assert instance.name == "peter"
         assert instance.status == "sad"
@@ -65,8 +66,8 @@ async def test_ensure_network() -> None:
         yield check_process("lxc network create roger")
         yield check_process("lxc network show roger", stdout="{status: online}")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         network = await node.ensure_network("peter")
         assert network.name == "peter"
         assert network.status == "online"
@@ -96,8 +97,8 @@ async def test_ensure_profile() -> None:
         yield check_process("lxc profile create steven")
         yield check_process("lxc profile show steven", stdout="{description: otters}")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         profile = await node.ensure_profile("peter")
         assert profile.name == "peter"
         assert profile.description == "otters"
@@ -121,8 +122,8 @@ async def test_ensure_project() -> None:
         yield check_process("lxc project create steven")
         yield check_process("lxc project show steven", stdout="{description: otters}")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         project = await node.ensure_project("peter")
         assert project.name == "peter"
         assert project.description == "otters"
@@ -146,8 +147,8 @@ async def test_ensure_storage() -> None:
         yield check_process("lxc storage create steven btrfs")
         yield check_process("lxc storage show steven", stdout="{description: otters}")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         storage = await node.ensure_storage("peter", "btrfs")
         assert storage.name == "peter"
         assert storage.description == "otters"
@@ -175,8 +176,8 @@ async def test_get_objects() -> None:
             stdout="[{name: peter, power: 3W}, {name: steven, power: 12GW}]",
         )
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         objects = list(await node.get_objects(_MockObject))
         assert len(objects) == 2
         peter = objects[0]
@@ -200,8 +201,8 @@ async def test_get_object() -> None:
             stdout=("- name: peter\n" + "  power: 3W\n"),
         )
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         peter = await node.get_object(_MockObject, "peter")
         assert peter is not None
         assert peter.name == "peter"
@@ -219,8 +220,8 @@ async def test_delete() -> None:
         )
         yield check_process("lxc mock delete peter")
 
-    async with MockShell(_mock_cli()) as sh:
-        node = await Node.load(sh)
+    sh = mock_shell(_mock_cli())
+    async with lxd_node(sh) as node:
         peter = await node.get_object(_MockObject, "peter")
         assert peter is not None
         await node.delete(peter)
