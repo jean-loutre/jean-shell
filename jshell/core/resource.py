@@ -111,11 +111,11 @@ P = ParamSpec("P")
 
 
 def resource(func: Callable[P, AsyncIterator[T]]) -> Callable[P, Resource[T]]:
-    """Decorator to wrap a function returning an async itorator into a resource.
+    """Wrap a function returning an async iterator into a one returning a resource.
 
-    The wrapped function will behave the same way it was wrapped in an async context
-    manager, except that it will be entered / exited only once for each parallel call on
-    the returned Resource.
+    The wrapped function will behave like it was wrapped with @asynccontextmanager
+    manager, except that it will be entered / exited only once for each batch of
+    parallel 'async with' on the returned Resource.
 
     Warning:
         Each call to the resulting function will create an independent resource, meaning
