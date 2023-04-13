@@ -158,3 +158,35 @@ def resource(func: Callable[P, AsyncIterator[T]]) -> Callable[P, Resource[T]]:
         return AsyncContextManagerResource(_context_factory)
 
     return wrapper
+
+
+class _ConstantResource(Resource[T]):
+    def __init__(self, value: T) -> None:
+        super().__init__()
+        self._value = value
+
+    async def _init(self) -> T:
+        return self._value
+
+    async def _cleanup(self) -> None:
+        pass
+
+
+def constant_resource(value: T) -> Resource[T]:
+    """Create a resource from a constant value.
+
+    Usefull where you want to able to handle resources, but have some cases where you just use a
+    constant value :
+
+    ```
+    if condition:
+        resource = SomeCustomResource()
+    else:
+        resource = constant_resource(value)
+
+    async with resource as value:
+        ...
+    ```
+
+    """
+    return _ConstantResource(value)

@@ -2,7 +2,12 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from unittest.mock import Mock
 
-from jshell.core.resource import AsyncContextManagerResource, Resource, resource
+from jshell.core.resource import (
+    AsyncContextManagerResource,
+    Resource,
+    constant_resource,
+    resource,
+)
 
 
 async def test_acquire_release() -> None:
@@ -65,3 +70,11 @@ async def test_resource_decorator() -> None:
         cleanup.assert_not_called()
 
     cleanup.assert_called_once()
+
+
+async def test_constant_resource() -> None:
+    constant = object()
+    test_resource = constant_resource(constant)
+
+    async with test_resource as value:
+        assert constant == value
