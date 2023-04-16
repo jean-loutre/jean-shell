@@ -19,6 +19,12 @@ async def test_get_attr() -> None:
     assert obj.power == "12GW"
 
 
+async def test_set_attr() -> None:
+    obj = _MockObject(AsyncMock(), name="peter")
+    obj.power = "12GW"
+    assert obj.power == "12GW"
+
+
 async def test_load() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
         yield check_process(
@@ -44,4 +50,5 @@ async def test_save() -> None:
     async with MockShell(_mock_cli()) as sh:
         cli = LxcCli(sh)
         obj = _MockObject(cli, name="peter", power="3W", ignore_me="M2GABASSINE")
-        await obj.save(mood="happy")
+        obj.mood = "happy"
+        await obj.save()

@@ -18,8 +18,8 @@ class Instance(Object):
         self._config = await (self._cli(f"config show {self.name}") | parse_yaml())
         self._config["name"] = name
 
-    async def save(self, **override: Any) -> None:
-        self._config.update(dict(**override))
+    async def save(self, **config: Any) -> None:
+        self._config.update(**config)
         await (self._dump() | self._cli(f"config edit {self.name}"))
 
     async def start(self) -> None:

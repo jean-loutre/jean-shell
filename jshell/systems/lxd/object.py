@@ -23,8 +23,14 @@ class Object:
     def __getattr__(self, name: str) -> Any:
         return self._config.get(name, None)
 
-    async def save(self, **override: Any) -> None:
-        self._config.update(**override)
+    def __setattr__(self, name: str, value: Any) -> Any:
+        if name not in ["_cli", "_config"]:
+            self._config[name] = value
+        else:
+            object.__setattr__(self, name, value)
+
+    async def save(self, **config: Any) -> None:
+        self._config.update(**config)
         await (self._dump() | self._cli(f"{self.subcommand} edit {self.name}"))
 
     async def load(self) -> None:
