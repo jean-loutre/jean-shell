@@ -1,3 +1,4 @@
+from logging import Logger
 from typing import Any, AsyncIterator, Iterable, Type, TypeVar, cast
 
 from jshell.core.pipe import dump_yaml, parse_yaml
@@ -19,9 +20,10 @@ async def lxd_node(
     sh: Resource[Shell],
     lxc_path: str = "lxc",
     project: str | None = None,
+    logger: Logger | None = None,
 ) -> AsyncIterator["Node"]:
     async with sh as loaded_sh:
-        node = Node(loaded_sh, lxc_path, project)
+        node = Node(loaded_sh, lxc_path, project, logger)
         if project is not None:
             await node.ensure_project(project)
         yield node
@@ -35,20 +37,22 @@ class Node:
         sh: Shell,
         lxc_path: str,
         project: str | None,
+        logger: Logger | None = None,
     ) -> None:
         self._objects: dict[Type[Object], list[Object]] = {}
-        self._cli = LxcCli(sh, lxc_path, project)
+        self._cli = LxcCli(sh, lxc_path, project=project, logger=logger)
 
     async def ensure_instance(self, name: str, image: str, **config: Any) -> Instance:
         instance = await self.get_object(Instance, name)
+        config_dict = dict(**config)
         if instance is None:
-            await (dump_yaml(dict(**config)) | self._cli(f"init {image} {name}"))
+            await (dump_yaml(config_dict) | self._cli(f"init {image} {name}"))
             instances = await self._get_objects(Instance)
             instance = Instance(self._cli, name)
             await instance.load()
             instances.append(instance)
-        else:
-            await instance.save(**config)
+        elif config_dict:
+            await instance.save(**config_dict)
 
         return instance
 

@@ -1,4 +1,4 @@
-from typing import Any
+from logging import Logger
 
 from jshell.core.pipe import PipeWriter
 from jshell.core.shell import Shell, ShellProcess
@@ -10,11 +10,12 @@ class LxcCli(Shell):
         host_shell: Shell,
         lxc_path: str = "lxc",
         project: str | None = None,
-        **kwargs: Any,
+        logger: Logger | None = None,
     ) -> None:
-        super().__init__(**kwargs)
-        self._lxc_path = lxc_path
+        super().__init__(logger=logger)
         self._host_shell = host_shell
+        self._logger = logger
+        self._lxc_path = lxc_path
         self._project = project
 
     async def _start_process(

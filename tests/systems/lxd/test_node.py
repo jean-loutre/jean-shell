@@ -8,7 +8,6 @@ from tests._mocks.mock_shell import MockProcess, check_process, mock_shell
 
 async def test_load_with_project() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
-        # project is ignored in commands not using it
         yield check_process(
             "lxc --project peter project list --format yaml", stdout="[]"
         )
