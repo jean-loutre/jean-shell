@@ -1,6 +1,7 @@
 """Base types and utilities to declare an inventory."""
 from asyncio import gather
 from logging import Logger, getLogger
+from re import compile
 from typing import Awaitable, Callable, Iterable, Mapping, TypeVar
 
 Task = Callable[["Inventory"], Awaitable[None]]
@@ -61,7 +62,7 @@ class Inventory:
         """Return a python Logger usable to report concerning the whole inventory."""
         return getLogger("jshell.runtime.inventory")
 
-    async def run(self, task_name: str) -> None:
+    async def run(self, task_name: str, include: list[str] | None = None) -> None:
         """Run the specified task on this inventory.
 
         Will run in parallell all tasks registered under the key "task_name"
@@ -69,11 +70,19 @@ class Inventory:
         decorated with the @task decorator declared on Target classes.
 
         :param task_name: Name of the task.
+        :param include: List of pattern that target names to include must match.
         """
-        await gather(*self._get_tasks(task_name))
+        await gather(*self._get_tasks(task_name, include or []))
 
-    def _get_tasks(self, task_name: str) -> Iterable[Awaitable[None]]:
+    def _get_tasks(
+        self, task_name: str, include: list[str]
+    ) -> Iterable[Awaitable[None]]:
+        include_patterns = [compile(it) for it in include]
         for target in self._targets:
+            if include_patterns and all(
+                it.match(target.name) is None for it in include_patterns
+            ):
+                continue
             pending_task = self._get_target_task(task_name, target)
             if pending_task is not None:
                 self.log.info("Pushing %s task for %s", task_name, target.name)

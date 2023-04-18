@@ -17,6 +17,18 @@ async def test_run() -> None:
     await inventory.run("deploy")
     deploy_mock.assert_awaited_once_with(inventory)
 
+    deploy_mock.reset_mock()
+    await inventory.run("deploy", include=["p.t.r", "p.*"])
+    deploy_mock.assert_awaited_once_with(inventory)
+
+    deploy_mock.reset_mock()
+    await inventory.run("deploy", ["p.t.r", "st.*"])
+    deploy_mock.assert_awaited_once_with(inventory)
+
+    deploy_mock.reset_mock()
+    await inventory.run("deploy", ["steven", "st.*"])
+    deploy_mock.assert_not_awaited()
+
 
 @mark.asyncio
 async def test_task_decorator() -> None:
