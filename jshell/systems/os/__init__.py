@@ -9,20 +9,23 @@ from jshell.core.shell import Shell, ShellPipe
 class Os(ABC):
     """Abstraction over os-specific operations."""
 
-    def sync(self, sh: Shell) -> "SyncBatch":
+    def __init__(self, sh: Shell) -> None:
+        self._sh = sh
+
+    def sync(self) -> "SyncBatch":
         """Start a batch to synchronize files.
 
         Limits the number of commands needed to send the files,
         by aggregating directory creation.
         """
-        return SyncBatch(sh, self)
+        return SyncBatch(self)
 
     @abstractmethod
-    def make_directory(self, sh: Shell, path: str | Path) -> ShellPipe:
+    def make_directory(self, path: str | Path) -> ShellPipe:
         """Create a directory."""
 
     @abstractmethod
-    def write_file(self, sh: Shell, path: str | Path) -> ShellPipe:
+    def write_file(self, path: str | Path) -> ShellPipe:
         """Write a file."""
 
 
@@ -47,8 +50,7 @@ class _PendingFile:
 class SyncBatch:
     """Batch synchronizing files to a remote host"""
 
-    def __init__(self, sh: Shell, os: Os) -> None:
-        self._sh = sh
+    def __init__(self, os: Os) -> None:
         self._os = os
         self._pending_files: list[_PendingFile] = []
 
@@ -88,7 +90,7 @@ class SyncBatch:
                 directories_to_create.add(target_directory)
 
         for directory in directories_to_create:
-            await self._os.make_directory(self._sh, directory)
+            await self._os.make_directory(directory)
 
         for file in self._pending_files:
-            await (echo(file.content) | self._os.write_file(self._sh, file.path))
+            await (echo(file.content) | self._os.write_file(file.path))

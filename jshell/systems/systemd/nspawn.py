@@ -19,7 +19,7 @@ class NSpawn:
     async def configure(self) -> AsyncIterator["NSpawnConfig"]:
         config = _NSpawnConfig()
         yield config
-        os = Unix()
+        os = Unix(self._sh)
         all_machines = set(it["name"] for it in await self._run("list-images"))
         running_machines = set(it["machine"] for it in await self._run("list"))
 
@@ -33,7 +33,7 @@ class NSpawn:
                 f"machinectl pull-tar --verify=checksum {machine.image_url} {machine.name}"
             )
 
-        async with os.sync(self._sh) as batch:
+        async with os.sync() as batch:
             for machine in config.machines:
                 batch.add(f"/etc/systemd/nspawn/{machine.name}.nspawn", machine.config)
 
