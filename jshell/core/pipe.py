@@ -322,7 +322,7 @@ class LinePipeWriter(ABC):
         self._pending_line = ""
 
     async def write(self, data: bytes) -> None:
-        string_content = self._pending_line + data.decode("utf-8")
+        string_content = self._pending_line + data.decode("utf-8", errors="ignore")
         self._pending_line = ""
         lines = string_content.split("\n")
 
