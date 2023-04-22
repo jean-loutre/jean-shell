@@ -9,47 +9,51 @@ from jshell.core.pipe import echo
 from jshell.core.shell import Shell, ShellPipe
 
 TNode = TypeVar("TNode", bound=Node)
-SourceHandler = Callable[[Path, Node], Awaitable[None]]
 
 
 class ManifestException(Exception):
     pass
 
 
-def _check_node_type(node: Node, node_type: Type[TNode]) -> TNode:
-    if not isinstance(node, node_type):
-        node_type_name = {MappingNode: "mapping", ScalarNode: "scalar"}[type]
-        raise ManifestException(f"Expected a {node_type_name} node.")
-    return node
+class ManifestNode:
+    def __init__(self, yaml_node: Node) -> None:
+        self._yaml_node = yaml_node
+
+    @property
+    def tag(self) -> str:
+        return self._yaml_node.tag[1:]
+
+    def items(self) -> Iterable[tuple[str, "ManifestNode"]]:
+        self._check_node_type(MappingNode)
+        for key_node, value_node in self._yaml_node.value:
+            yield (ManifestNode(key_node).as_scalar(), ManifestNode(value_node))
+
+    def get(self, key: str) -> "ManifestNode | None":
+        self._check_node_type(MappingNode)
+        for key_node, value_node in self._yaml_node.value:
+            if ManifestNode(key_node).as_scalar() == key:
+                return ManifestNode(value_node)
+
+        return None
+
+    def as_scalar(self) -> str:
+        self._check_node_type(ScalarNode)
+        return cast(str, self._yaml_node.value)
+
+    def get_scalar(self, key: str) -> str | None:
+        node = self.get(key)
+        if node:
+            return node.as_scalar()
+
+        return None
+
+    def _check_node_type(self, node_type: Type[TNode]) -> None:
+        if not isinstance(self._yaml_node, node_type):
+            node_type_name = {MappingNode: "mapping", ScalarNode: "scalar"}[type]
+            raise ManifestException(f"Expected a {node_type_name} node.")
 
 
-def _yaml_get(
-    mapping: MappingNode, key: str, expected_type: Type[TNode]
-) -> TNode | None:
-    for key_node, value_node in mapping.value:
-        key_node = _check_node_type(key_node, ScalarNode)
-        if key_node.value == key:
-            return _check_node_type(value_node, expected_type)
-
-    return None
-
-
-def _yaml_get_scalar(mapping: MappingNode, key: str) -> str | None:
-    scalar_node = _yaml_get(mapping, key, ScalarNode)
-    if scalar_node:
-        return cast(str, scalar_node.value)
-
-    return None
-
-
-def _yaml_items(
-    node: MappingNode, expected_value_type: Type[TNode]
-) -> Iterable[tuple[str, TNode]]:
-    for key_node, value_node in node.value:
-        yield (
-            _check_node_type(key_node, ScalarNode).value,
-            _check_node_type(value_node, expected_value_type),
-        )
+SourceHandler = Callable[[Path, ManifestNode], Awaitable[None]]
 
 
 class Os(ABC):
@@ -89,10 +93,9 @@ class Os(ABC):
         default_handlers["dir"] = lambda path, node: self._sync_dir(
             path, node, default_handlers
         )
-        root_node = compose(manifest, Loader=Loader)
-        _check_node_type(root_node, MappingNode)
+        root_node = ManifestNode(compose(manifest, Loader=Loader))
 
-        files_node = _yaml_get(root_node, "files", MappingNode)
+        files_node = root_node.get("files")
         if files_node is not None:
             await self._sync_files(
                 files_node, root_path=Path("/"), source_handlers=default_handlers
@@ -100,34 +103,30 @@ class Os(ABC):
 
     async def _sync_files(
         self,
-        files_node: MappingNode,
+        files_node: ManifestNode,
         root_path: Path,
         source_handlers: Mapping[str, SourceHandler],
     ) -> None:
-        for path, file_manifest in _yaml_items(files_node, MappingNode):
+        for path, file_manifest in files_node.items():
             expanded_path = root_path / path
-            source = _yaml_get(file_manifest, "source", Node)
+            source = file_manifest.get("source")
             if source:
-                source_tag = source.tag or ""
-                source_tag = source_tag[1:]
+                source_tag = source.tag
                 await source_handlers[source_tag](expanded_path, source)
 
-            user = _yaml_get_scalar(file_manifest, "user")
-            group = _yaml_get_scalar(file_manifest, "group")
-            mode = _yaml_get_scalar(file_manifest, "mode")
+            user = file_manifest.get_scalar("user")
+            group = file_manifest.get_scalar("group")
+            mode = file_manifest.get_scalar("mode")
             if user or group or mode:
                 await self.set_permissions(
                     expanded_path, user=user, group=group, mode=mode
                 )
 
     async def _sync_dir(
-        self, path: Path, node: Node, source_handlers: dict[str, SourceHandler]
+        self, path: Path, node: ManifestNode, source_handlers: dict[str, SourceHandler]
     ) -> None:
-        checked_node = _check_node_type(node, MappingNode)
         await self.make_directory(path)
-        await self._sync_files(
-            checked_node, root_path=path, source_handlers=source_handlers
-        )
+        await self._sync_files(node, root_path=path, source_handlers=source_handlers)
 
 
 class _PendingFile:
