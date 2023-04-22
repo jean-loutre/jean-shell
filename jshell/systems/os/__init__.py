@@ -52,7 +52,7 @@ class ManifestNode:
             raise ManifestException(f"Expected a {node_type_name} node.")
 
 
-SourceHandler = Callable[[Path, ManifestNode], Awaitable[None]]
+ContentHandler = Callable[[Path, ManifestNode], Awaitable[None]]
 
 
 class Os(ABC):
@@ -79,18 +79,20 @@ class Os(ABC):
     ) -> None:
         """Change a file or directory owner, group and permissions."""
 
-    async def sync_manifest(self, manifest: str) -> None:
+    async def sync_manifest(
+        self, manifest: str, content_handlers: dict[str, ContentHandler] | None = None
+    ) -> None:
         async def _sync_file(path: Path, node: ManifestNode) -> None:
-            source = node.as_scalar()
-            await (cat(source) | self.write_file(path))
+            content = node.as_scalar()
+            await (cat(content) | self.write_file(path))
 
-        source_handlers: dict[str, SourceHandler] = {}
+        extended_content_handlers = content_handlers or {}
 
         async def _sync_dir(path: Path, node: ManifestNode) -> None:
             await self.make_directory(path)
-            await self._sync_files(node, path, source_handlers)
+            await self._sync_files(node, path, extended_content_handlers)
 
-        source_handlers = source_handlers | {
+        extended_content_handlers = extended_content_handlers | {
             "tag:yaml.org,2002:str": _sync_file,
             "!dir": _sync_dir,
         }
@@ -99,20 +101,19 @@ class Os(ABC):
 
         files_node = root_node.get("files")
         if files_node is not None:
-            await self._sync_files(files_node, Path("/"), source_handlers)
+            await self._sync_files(files_node, Path("/"), extended_content_handlers)
 
     async def _sync_files(
         self,
         files_node: ManifestNode,
         root_path: Path,
-        source_handlers: Mapping[str, SourceHandler],
+        content_handlers: Mapping[str, ContentHandler],
     ) -> None:
         for path, file_manifest in files_node.items():
             expanded_path = root_path / path
-            source = file_manifest.get("source")
-            if source:
-                source_tag = source.tag
-                await source_handlers[source_tag](expanded_path, source)
+            content = file_manifest.get("content")
+            if content:
+                await content_handlers[content.tag](expanded_path, content)
 
             user = file_manifest.get_scalar("user")
             group = file_manifest.get_scalar("group")

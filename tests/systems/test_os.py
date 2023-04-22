@@ -24,7 +24,7 @@ class MockOs(Os):
         await self._sh(f"permissions {path} {user} {group} {mode}")
 
 
-async def test_manifest_directory_source() -> None:
+async def test_manifest_directory_content() -> None:
     async def _system_mock() -> AsyncIterator[MockProcess]:
         yield check_process("mkdir /etc/otters")
         yield check_process("permissions /etc/otters/peter_file peter None None")
@@ -33,7 +33,7 @@ async def test_manifest_directory_source() -> None:
     manifest = """
     files:
       /etc/otters:
-        source: !dir
+        content: !dir
           peter_file:
             user: peter
           steven_file:
@@ -44,7 +44,7 @@ async def test_manifest_directory_source() -> None:
         await os.sync_manifest(manifest)
 
 
-async def test_manifest_default_source(tmp_path: Path) -> None:
+async def test_manifest_default_content(tmp_path: Path) -> None:
     test_path = tmp_path / "peter"
     test_content = b"Kweek kweek"
     with open(test_path, "wb") as test_file:
@@ -56,7 +56,7 @@ async def test_manifest_default_source(tmp_path: Path) -> None:
     manifest = f"""
     files:
       /etc/otters:
-        source: {test_path}
+        content: {test_path}
     """
 
     async with MockShell(_system_mock()) as sh:
