@@ -16,7 +16,7 @@ class MockOs(Os):
 
     async def set_permissions(
         self,
-        path: str,
+        path: str | Path,
         user: str | None = None,
         group: str | None = None,
         mode: str | None = None,
@@ -56,6 +56,26 @@ async def test_sync_batch_create_directories() -> None:
             batch.add("/etc/otters/peter.cfg", b"")
             batch.add("/etc/otters/steven.cfg", b"")
             batch.add("/etc/resolv.conf", b"")
+
+
+async def test_manifest_directory_source() -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("mkdir /etc/otters")
+        yield check_process("permissions /etc/otters/peter_file peter None None")
+        yield check_process("permissions /etc/otters/steven_file steven None None")
+
+    manifest = """
+    files:
+      /etc/otters:
+        source: !dir
+          peter_file:
+            user: peter
+          steven_file:
+            user: steven
+    """
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)
 
 
 async def test_manifest_file_mode() -> None:

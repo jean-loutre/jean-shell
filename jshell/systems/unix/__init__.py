@@ -21,7 +21,7 @@ class Unix(Os):
 
     async def set_permissions(
         self,
-        path: str,
+        path: str | Path,
         user: str | None = None,
         group: str | None = None,
         mode: str | None = None,

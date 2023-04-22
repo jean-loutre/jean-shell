@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from types import TracebackType
-from typing import Iterable, Type, TypeVar, cast
+from typing import Awaitable, Callable, Iterable, Mapping, Type, TypeVar, cast
 
 from yaml import Loader, MappingNode, Node, ScalarNode, compose
 
@@ -9,6 +9,7 @@ from jshell.core.pipe import echo
 from jshell.core.shell import Shell, ShellPipe
 
 TNode = TypeVar("TNode", bound=Node)
+SourceHandler = Callable[[Path, Node], Awaitable[None]]
 
 
 class ManifestException(Exception):
@@ -76,7 +77,7 @@ class Os(ABC):
     @abstractmethod
     async def set_permissions(
         self,
-        path: str,
+        path: str | Path,
         user: str | None = None,
         group: str | None = None,
         mode: str | None = None,
@@ -84,20 +85,49 @@ class Os(ABC):
         """Change a file or directory owner, group and permissions."""
 
     async def sync_manifest(self, manifest: str) -> None:
+        default_handlers: dict[str, SourceHandler] = {}
+        default_handlers["dir"] = lambda path, node: self._sync_dir(
+            path, node, default_handlers
+        )
         root_node = compose(manifest, Loader=Loader)
         _check_node_type(root_node, MappingNode)
 
         files_node = _yaml_get(root_node, "files", MappingNode)
         if files_node is not None:
-            await self._sync_files(files_node)
+            await self._sync_files(
+                files_node, root_path=Path("/"), source_handlers=default_handlers
+            )
 
-    async def _sync_files(self, files_node: MappingNode) -> None:
+    async def _sync_files(
+        self,
+        files_node: MappingNode,
+        root_path: Path,
+        source_handlers: Mapping[str, SourceHandler],
+    ) -> None:
         for path, file_manifest in _yaml_items(files_node, MappingNode):
+            expanded_path = root_path / path
+            source = _yaml_get(file_manifest, "source", Node)
+            if source:
+                source_tag = source.tag or ""
+                source_tag = source_tag[1:]
+                await source_handlers[source_tag](expanded_path, source)
+
             user = _yaml_get_scalar(file_manifest, "user")
             group = _yaml_get_scalar(file_manifest, "group")
             mode = _yaml_get_scalar(file_manifest, "mode")
             if user or group or mode:
-                await self.set_permissions(path, user=user, group=group, mode=mode)
+                await self.set_permissions(
+                    expanded_path, user=user, group=group, mode=mode
+                )
+
+    async def _sync_dir(
+        self, path: Path, node: Node, source_handlers: dict[str, SourceHandler]
+    ) -> None:
+        checked_node = _check_node_type(node, MappingNode)
+        await self.make_directory(path)
+        await self._sync_files(
+            checked_node, root_path=path, source_handlers=source_handlers
+        )
 
 
 class _PendingFile:
