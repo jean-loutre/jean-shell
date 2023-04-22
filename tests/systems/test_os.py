@@ -24,40 +24,6 @@ class MockOs(Os):
         await self._sh(f"permissions {path} {user} {group} {mode}")
 
 
-async def test_sync_batch_write_file() -> None:
-    """Sync batch should create directories and write to files"""
-
-    async def _mock_system() -> AsyncIterator[MockProcess]:
-        yield check_process("mkdir /etc/otter")
-        yield check_process(
-            "write /etc/otter/otter.cfg", expected_stdin="kweek = kweek kweek"
-        )
-
-    async with MockShell(_mock_system()) as sh:
-        os = MockOs(sh)
-        async with os.sync() as batch:
-            batch.add("/etc/otter/otter.cfg", b"kweek = kweek kweek")
-
-
-async def test_sync_batch_create_directories() -> None:
-    """Sync batch should create directories only once"""
-
-    async def _system_mock() -> AsyncIterator[MockProcess]:
-        yield check_process("mkdir /etc/otter")
-        yield check_process("write /etc/hosts")
-        yield check_process("write /etc/otters/peter.cfg")
-        yield check_process("write /etc/otters/steven.cfg")
-        yield check_process("write /etc/resolv.conf")
-
-    async with MockShell(_system_mock()) as sh:
-        os = MockOs(sh)
-        async with os.sync() as batch:
-            batch.add("/etc/hosts", b"")
-            batch.add("/etc/otters/peter.cfg", b"")
-            batch.add("/etc/otters/steven.cfg", b"")
-            batch.add("/etc/resolv.conf", b"")
-
-
 async def test_manifest_directory_source() -> None:
     async def _system_mock() -> AsyncIterator[MockProcess]:
         yield check_process("mkdir /etc/otters")

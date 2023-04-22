@@ -3,7 +3,7 @@ from logging import Logger
 from shlex import quote
 from typing import Any, AsyncIterator, Iterable, Protocol
 
-from jshell.core.pipe import PipeWriter, parse_json
+from jshell.core.pipe import PipeWriter, echo, parse_json
 from jshell.core.shell import Shell, ShellProcess
 from jshell.systems.unix import Unix
 
@@ -33,9 +33,12 @@ class NSpawn:
                 f"machinectl pull-tar --verify=checksum {machine.image_url} {machine.name}"
             )
 
-        async with os.sync() as batch:
-            for machine in config.machines:
-                batch.add(f"/etc/systemd/nspawn/{machine.name}.nspawn", machine.config)
+        for machine in config.machines:
+            await os.make_directory("/etc/systemd/nspawn")
+            await (
+                echo(machine.config)
+                | os.write_file(f"/etc/systemd/nspawn/{machine.name}.nspawn")
+            )
 
         for machine in config.machines:
             await self._sh(f"machinectl enable {machine.name}")
