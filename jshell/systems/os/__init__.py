@@ -4,7 +4,7 @@ from typing import Awaitable, Callable, Iterable, Mapping, Type, TypeVar, cast
 
 from yaml import Loader, MappingNode, Node, ScalarNode, compose
 
-from jshell.core.pipe import cat
+from jshell.core.pipe import cat, echo
 from jshell.core.shell import Shell, ShellPipe
 
 TNode = TypeVar("TNode", bound=Node)
@@ -83,8 +83,12 @@ class Os(ABC):
         self, manifest: str, content_handlers: dict[str, ContentHandler] | None = None
     ) -> None:
         async def _sync_file(path: Path, node: ManifestNode) -> None:
+            source_path = node.as_scalar()
+            await (cat(source_path) | self.write_file(path))
+
+        async def _sync_content(path: Path, node: ManifestNode) -> None:
             content = node.as_scalar()
-            await (cat(content) | self.write_file(path))
+            await (echo(content) | self.write_file(path))
 
         extended_content_handlers = content_handlers or {}
 
@@ -93,7 +97,8 @@ class Os(ABC):
             await self._sync_files(node, path, extended_content_handlers)
 
         extended_content_handlers = extended_content_handlers | {
-            "tag:yaml.org,2002:str": _sync_file,
+            "tag:yaml.org,2002:str": _sync_content,
+            "!file": _sync_file,
             "!dir": _sync_dir,
         }
 
