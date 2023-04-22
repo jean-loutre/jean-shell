@@ -5,7 +5,7 @@ from typing import Awaitable, Callable, Iterable, Mapping, Type, TypeVar, cast
 
 from yaml import Loader, MappingNode, Node, ScalarNode, compose
 
-from jshell.core.pipe import echo
+from jshell.core.pipe import cat, echo
 from jshell.core.shell import Shell, ShellPipe
 
 TNode = TypeVar("TNode", bound=Node)
@@ -21,7 +21,7 @@ class ManifestNode:
 
     @property
     def tag(self) -> str:
-        return self._yaml_node.tag[1:]
+        return self._yaml_node.tag
 
     def items(self) -> Iterable[tuple[str, "ManifestNode"]]:
         self._check_node_type(MappingNode)
@@ -89,13 +89,20 @@ class Os(ABC):
         """Change a file or directory owner, group and permissions."""
 
     async def sync_manifest(self, manifest: str) -> None:
+        async def _sync_file(path: Path, node: ManifestNode) -> None:
+            source = node.as_scalar()
+            await (cat(source) | self.write_file(path))
+
         source_handlers: dict[str, SourceHandler] = {}
 
         async def _sync_dir(path: Path, node: ManifestNode) -> None:
             await self.make_directory(path)
             await self._sync_files(node, path, source_handlers)
 
-        source_handlers["dir"] = _sync_dir
+        source_handlers = source_handlers | {
+            "tag:yaml.org,2002:str": _sync_file,
+            "!dir": _sync_dir,
+        }
 
         root_node = ManifestNode(compose(manifest, Loader=Loader))
 

@@ -78,6 +78,26 @@ async def test_manifest_directory_source() -> None:
         await os.sync_manifest(manifest)
 
 
+async def test_manifest_default_source(tmp_path: Path) -> None:
+    test_path = tmp_path / "peter"
+    test_content = b"Kweek kweek"
+    with open(test_path, "wb") as test_file:
+        test_file.write(test_content)
+
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("write /etc/otters", expected_stdin=test_content)
+
+    manifest = f"""
+    files:
+      /etc/otters:
+        source: {test_path}
+    """
+
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)
+
+
 async def test_manifest_file_mode() -> None:
     async def _system_mock() -> AsyncIterator[MockProcess]:
         yield check_process("permissions /etc/otters peter peter 0755")
