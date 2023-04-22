@@ -89,17 +89,19 @@ class Os(ABC):
         """Change a file or directory owner, group and permissions."""
 
     async def sync_manifest(self, manifest: str) -> None:
-        default_handlers: dict[str, SourceHandler] = {}
-        default_handlers["dir"] = lambda path, node: self._sync_dir(
-            path, node, default_handlers
-        )
+        source_handlers: dict[str, SourceHandler] = {}
+
+        async def _sync_dir(path: Path, node: ManifestNode) -> None:
+            await self.make_directory(path)
+            await self._sync_files(node, path, source_handlers)
+
+        source_handlers["dir"] = _sync_dir
+
         root_node = ManifestNode(compose(manifest, Loader=Loader))
 
         files_node = root_node.get("files")
         if files_node is not None:
-            await self._sync_files(
-                files_node, root_path=Path("/"), source_handlers=default_handlers
-            )
+            await self._sync_files(files_node, Path("/"), source_handlers)
 
     async def _sync_files(
         self,
@@ -121,12 +123,6 @@ class Os(ABC):
                 await self.set_permissions(
                     expanded_path, user=user, group=group, mode=mode
                 )
-
-    async def _sync_dir(
-        self, path: Path, node: ManifestNode, source_handlers: dict[str, SourceHandler]
-    ) -> None:
-        await self.make_directory(path)
-        await self._sync_files(node, root_path=path, source_handlers=source_handlers)
 
 
 class _PendingFile:
