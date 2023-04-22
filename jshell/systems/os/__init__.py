@@ -1,9 +1,54 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from types import TracebackType
+from typing import Iterable, Type, TypeVar, cast
+
+from yaml import Loader, MappingNode, Node, ScalarNode, compose
 
 from jshell.core.pipe import echo
 from jshell.core.shell import Shell, ShellPipe
+
+TNode = TypeVar("TNode", bound=Node)
+
+
+class ManifestException(Exception):
+    pass
+
+
+def _check_node_type(node: Node, node_type: Type[TNode]) -> TNode:
+    if not isinstance(node, node_type):
+        node_type_name = {MappingNode: "mapping", ScalarNode: "scalar"}[type]
+        raise ManifestException(f"Expected a {node_type_name} node.")
+    return node
+
+
+def _yaml_get(
+    mapping: MappingNode, key: str, expected_type: Type[TNode]
+) -> TNode | None:
+    for key_node, value_node in mapping.value:
+        key_node = _check_node_type(key_node, ScalarNode)
+        if key_node.value == key:
+            return _check_node_type(value_node, expected_type)
+
+    return None
+
+
+def _yaml_get_scalar(mapping: MappingNode, key: str) -> str | None:
+    scalar_node = _yaml_get(mapping, key, ScalarNode)
+    if scalar_node:
+        return cast(str, scalar_node.value)
+
+    return None
+
+
+def _yaml_items(
+    node: MappingNode, expected_value_type: Type[TNode]
+) -> Iterable[tuple[str, TNode]]:
+    for key_node, value_node in node.value:
+        yield (
+            _check_node_type(key_node, ScalarNode).value,
+            _check_node_type(value_node, expected_value_type),
+        )
 
 
 class Os(ABC):
@@ -27,6 +72,32 @@ class Os(ABC):
     @abstractmethod
     def write_file(self, path: str | Path) -> ShellPipe:
         """Write a file."""
+
+    @abstractmethod
+    async def set_permissions(
+        self,
+        path: str,
+        user: str | None = None,
+        group: str | None = None,
+        mode: str | None = None,
+    ) -> None:
+        """Change a file or directory owner, group and permissions."""
+
+    async def sync_manifest(self, manifest: str) -> None:
+        root_node = compose(manifest, Loader=Loader)
+        _check_node_type(root_node, MappingNode)
+
+        files_node = _yaml_get(root_node, "files", MappingNode)
+        if files_node is not None:
+            await self._sync_files(files_node)
+
+    async def _sync_files(self, files_node: MappingNode) -> None:
+        for path, file_manifest in _yaml_items(files_node, MappingNode):
+            user = _yaml_get_scalar(file_manifest, "user")
+            group = _yaml_get_scalar(file_manifest, "group")
+            mode = _yaml_get_scalar(file_manifest, "mode")
+            if user or group or mode:
+                await self.set_permissions(path, user=user, group=group, mode=mode)
 
 
 class _PendingFile:

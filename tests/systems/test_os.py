@@ -14,6 +14,15 @@ class MockOs(Os):
     def write_file(self, path: str | Path) -> ShellPipe:
         return self._sh(f"write {path}")
 
+    async def set_permissions(
+        self,
+        path: str,
+        user: str | None = None,
+        group: str | None = None,
+        mode: str | None = None,
+    ) -> None:
+        await self._sh(f"permissions {path} {user} {group} {mode}")
+
 
 async def test_sync_batch_write_file() -> None:
     """Sync batch should create directories and write to files"""
@@ -47,3 +56,19 @@ async def test_sync_batch_create_directories() -> None:
             batch.add("/etc/otters/peter.cfg", b"")
             batch.add("/etc/otters/steven.cfg", b"")
             batch.add("/etc/resolv.conf", b"")
+
+
+async def test_manifest_file_mode() -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("permissions /etc/otters peter peter 0755")
+
+    manifest = """
+    files:
+      /etc/otters:
+        user: peter
+        group: peter
+        mode: 0755
+    """
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)

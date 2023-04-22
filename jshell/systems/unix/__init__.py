@@ -18,3 +18,17 @@ class Unix(Os):
 
     def write_file(self, path: str | Path) -> ShellPipe:
         return self._sh(f"cat > {path}")
+
+    async def set_permissions(
+        self,
+        path: str,
+        user: str | None = None,
+        group: str | None = None,
+        mode: str | None = None,
+    ) -> None:
+        if user:
+            await self._sh(f"chown {user} {path}")
+        if group:
+            await self._sh(f"chgrp {group} {path}")
+        if mode:
+            await self._sh(f"chmod {mode} {path}")

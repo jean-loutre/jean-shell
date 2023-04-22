@@ -49,8 +49,8 @@ class Node:
             await (dump_yaml(config_dict) | self._cli(f"init {image} {name}"))
             instances = await self._get_objects(Instance)
             instance = Instance(self._cli, name)
-            await instance.load()
             instances.append(instance)
+            await instance.load()
         elif config_dict:
             await instance.save(**config_dict)
 
