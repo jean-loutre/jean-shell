@@ -40,6 +40,21 @@ async def test_manifest_content_string() -> None:
         await os.sync_manifest(manifest)
 
 
+async def test_manifest_content_base64() -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("write /etc/otters", expected_stdin=b"Kweek kweek\n")
+
+    manifest = """
+    files:
+      /etc/otters:
+        content: !base64 S3dlZWsga3dlZWsK
+    """
+
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)
+
+
 async def test_manifest_content_directory() -> None:
     async def _system_mock() -> AsyncIterator[MockProcess]:
         yield check_process("mkdir /etc/otters")

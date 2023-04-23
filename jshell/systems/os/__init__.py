@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from base64 import b64decode
 from pathlib import Path
 from typing import Awaitable, Callable, Iterable, Mapping, Type, TypeVar, cast
 
@@ -108,6 +109,10 @@ class Os(ABC):
             content = node.as_scalar()
             await (echo(content) | self.write_file(path))
 
+        async def _base64_source(path: Path, node: ManifestNode) -> None:
+            content = b64decode(node.as_scalar())
+            await (echo(content) | self.write_file(path))
+
         extended_content_handlers = content_handlers or {}
 
         async def _sync_dir(path: Path, node: ManifestNode) -> None:
@@ -116,6 +121,7 @@ class Os(ABC):
 
         extended_content_handlers = extended_content_handlers | {
             "tag:yaml.org,2002:str": _sync_content,
+            "!base64": _base64_source,
             "!file": _sync_file,
             "!dir": _sync_dir,
         }
