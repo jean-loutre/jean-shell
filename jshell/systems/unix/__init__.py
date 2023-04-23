@@ -19,6 +19,9 @@ class Unix(Os):
     def write_file(self, path: str | Path) -> ShellPipe:
         return self._sh(f"cat > {path}")
 
+    async def link(self, target: str | Path, path: str | Path) -> None:
+        await self._sh(f"ln -s {target} {path}")
+
     async def set_permissions(
         self,
         path: str | Path,

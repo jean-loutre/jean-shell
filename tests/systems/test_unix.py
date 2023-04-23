@@ -1,6 +1,6 @@
 """Config unit tests."""
 from typing import AsyncIterator
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from jshell.systems.unix import Unix
 from tests._mocks.mock_shell import MockProcess, MockShell, check_process
@@ -18,6 +18,13 @@ def test_write_files() -> None:
     unix = Unix(sh_mock)
     unix.write_file("/etc/otters")
     sh_mock.assert_called_once_with("cat > /etc/otters")
+
+
+async def test_link() -> None:
+    sh_mock = AsyncMock()
+    unix = Unix(sh_mock)
+    await unix.link("/link", "/target")
+    sh_mock.assert_awaited_once_with("ln -s /link /target")
 
 
 async def test_set_permissions() -> None:

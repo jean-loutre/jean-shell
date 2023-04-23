@@ -14,6 +14,9 @@ class MockOs(Os):
     def write_file(self, path: str | Path) -> ShellPipe:
         return self._sh(f"write {path}")
 
+    async def link(self, target: str | Path, path: str | Path) -> None:
+        await self._sh(f"link {path} target")
+
     async def set_permissions(
         self,
         path: str | Path,

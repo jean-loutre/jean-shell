@@ -89,6 +89,10 @@ class Os(ABC):
         """Write a file."""
 
     @abstractmethod
+    async def link(self, target: Path | str, path: str | Path) -> None:
+        """Create a link."""
+
+    @abstractmethod
     async def set_permissions(
         self,
         path: str | Path,
