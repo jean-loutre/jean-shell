@@ -15,7 +15,7 @@ class MockOs(Os):
         return self._sh(f"write {path}")
 
     async def link(self, target: str | Path, path: str | Path) -> None:
-        await self._sh(f"link {path} target")
+        await self._sh(f"link {target} {path}")
 
     async def set_permissions(
         self,
@@ -73,6 +73,21 @@ async def test_manifest_content_directory() -> None:
           steven_file:
             user: steven
     """
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)
+
+
+async def test_manifest_link_content() -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("link /peter /steven")
+
+    manifest = """
+    files:
+      /steven:
+        content: !link /peter
+    """
+
     async with MockShell(_system_mock()) as sh:
         os = MockOs(sh)
         await os.sync_manifest(manifest)

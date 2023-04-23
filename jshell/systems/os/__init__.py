@@ -123,11 +123,16 @@ class Os(ABC):
             source_path = node.as_scalar()
             await (cat(source_path) | self.write_file(path))
 
+        async def _link_source(path: Path, node: ManifestNode) -> None:
+            target = node.as_scalar()
+            await self.link(target, path)
+
         extended_content_handlers = extended_content_handlers | {
             "!base64": _base64_source,
             "tag:yaml.org,2002:str": _content_source,
             "!dir": _dir_source,
             "!file": _file_source,
+            "!link": _link_source,
         }
 
         root_node = ManifestNode(compose(manifest, Loader=Loader))
