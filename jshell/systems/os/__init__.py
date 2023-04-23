@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Awaitable, Callable, Iterable, Mapping, Type, TypeVar, cast
 
-from yaml import Loader, MappingNode, Node, ScalarNode, compose
+from yaml import Loader, MappingNode, Node, ScalarNode, SequenceNode, compose
 
 from jshell.core.pipe import cat, echo
 from jshell.core.shell import Shell, ShellPipe
@@ -22,13 +22,22 @@ class ManifestNode:
     def tag(self) -> str:
         return self._yaml_node.tag
 
-    def items(self) -> Iterable[tuple[str, "ManifestNode"]]:
-        self._check_node_type(MappingNode)
+    @property
+    def is_scalar(self) -> bool:
+        return isinstance(self._yaml_node, ScalarNode)
+
+    def items(self) -> Iterable[tuple["ManifestNode", "ManifestNode"]]:
+        self.check_node_type(MappingNode)
         for key_node, value_node in self._yaml_node.value:
-            yield (ManifestNode(key_node).as_scalar(), ManifestNode(value_node))
+            yield (ManifestNode(key_node), ManifestNode(value_node))
+
+    def iter(self) -> Iterable["ManifestNode"]:
+        self.check_node_type(SequenceNode)
+        for node in self._yaml_node.value:
+            yield ManifestNode(node)
 
     def get(self, key: str) -> "ManifestNode | None":
-        self._check_node_type(MappingNode)
+        self.check_node_type(MappingNode)
         for key_node, value_node in self._yaml_node.value:
             if ManifestNode(key_node).as_scalar() == key:
                 return ManifestNode(value_node)
@@ -36,7 +45,7 @@ class ManifestNode:
         return None
 
     def as_scalar(self) -> str:
-        self._check_node_type(ScalarNode)
+        self.check_node_type(ScalarNode)
         return cast(str, self._yaml_node.value)
 
     def get_scalar(self, key: str) -> str | None:
@@ -46,10 +55,19 @@ class ManifestNode:
 
         return None
 
-    def _check_node_type(self, node_type: Type[TNode]) -> None:
-        if not isinstance(self._yaml_node, node_type):
-            node_type_name = {MappingNode: "mapping", ScalarNode: "scalar"}[type]
-            raise ManifestException(f"Expected a {node_type_name} node.")
+    def check_node_type(self, *node_types: Type[TNode]) -> None:
+        if not isinstance(self._yaml_node, tuple(node_types)):
+            node_type_names = [
+                {
+                    MappingNode: "mapping",
+                    ScalarNode: "scalar",
+                    SequenceNode: "sequence",
+                }[it]
+                for it in node_types
+            ]
+            raise ManifestException(
+                f"Expected one of {' '.join(node_type_names)} node."
+            )
 
 
 ContentHandler = Callable[[Path, ManifestNode], Awaitable[None]]
@@ -114,16 +132,23 @@ class Os(ABC):
         root_path: Path,
         content_handlers: Mapping[str, ContentHandler],
     ) -> None:
-        for path, file_manifest in files_node.items():
-            expanded_path = root_path / path
-            content = file_manifest.get("content")
-            if content:
-                await content_handlers[content.tag](expanded_path, content)
+        for path_node, file_manifest in files_node.items():
+            path_node.check_node_type(ScalarNode, SequenceNode)
+            if path_node.is_scalar:
+                paths = [path_node.as_scalar()]
+            else:
+                paths = [it.as_scalar() for it in path_node.iter()]
 
-            user = file_manifest.get_scalar("user")
-            group = file_manifest.get_scalar("group")
-            mode = file_manifest.get_scalar("mode")
-            if user or group or mode:
-                await self.set_permissions(
-                    expanded_path, user=user, group=group, mode=mode
-                )
+            for path in paths:
+                expanded_path = root_path / path
+                content = file_manifest.get("content")
+                if content:
+                    await content_handlers[content.tag](expanded_path, content)
+
+                user = file_manifest.get_scalar("user")
+                group = file_manifest.get_scalar("group")
+                mode = file_manifest.get_scalar("mode")
+                if user or group or mode:
+                    await self.set_permissions(
+                        expanded_path, user=user, group=group, mode=mode
+                    )

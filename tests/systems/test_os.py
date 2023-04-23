@@ -74,3 +74,20 @@ async def test_manifest_file_mode() -> None:
     async with MockShell(_system_mock()) as sh:
         os = MockOs(sh)
         await os.sync_manifest(manifest)
+
+
+async def test_manifest_multiple_target() -> None:
+    async def _system_mock() -> AsyncIterator[MockProcess]:
+        yield check_process("permissions /etc/wubba steven otters 0755")
+        yield check_process("permissions /etc/lubba steven otters 0755")
+
+    manifest = """
+    files:
+      [/etc/wubba, /etc/lubba]:
+        user: steven
+        group: otters
+        mode: 0755
+    """
+    async with MockShell(_system_mock()) as sh:
+        os = MockOs(sh)
+        await os.sync_manifest(manifest)
