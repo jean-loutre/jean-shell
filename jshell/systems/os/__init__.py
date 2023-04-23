@@ -101,29 +101,29 @@ class Os(ABC):
     async def sync_manifest(
         self, manifest: str, content_handlers: dict[str, ContentHandler] | None = None
     ) -> None:
-        async def _sync_file(path: Path, node: ManifestNode) -> None:
-            source_path = node.as_scalar()
-            await (cat(source_path) | self.write_file(path))
-
-        async def _sync_content(path: Path, node: ManifestNode) -> None:
-            content = node.as_scalar()
-            await (echo(content) | self.write_file(path))
+        extended_content_handlers = content_handlers or {}
 
         async def _base64_source(path: Path, node: ManifestNode) -> None:
             content = b64decode(node.as_scalar())
             await (echo(content) | self.write_file(path))
 
-        extended_content_handlers = content_handlers or {}
+        async def _content_source(path: Path, node: ManifestNode) -> None:
+            content = node.as_scalar()
+            await (echo(content) | self.write_file(path))
 
-        async def _sync_dir(path: Path, node: ManifestNode) -> None:
+        async def _dir_source(path: Path, node: ManifestNode) -> None:
             await self.make_directory(path)
             await self._sync_files(node, path, extended_content_handlers)
 
+        async def _file_source(path: Path, node: ManifestNode) -> None:
+            source_path = node.as_scalar()
+            await (cat(source_path) | self.write_file(path))
+
         extended_content_handlers = extended_content_handlers | {
-            "tag:yaml.org,2002:str": _sync_content,
             "!base64": _base64_source,
-            "!file": _sync_file,
-            "!dir": _sync_dir,
+            "tag:yaml.org,2002:str": _content_source,
+            "!dir": _dir_source,
+            "!file": _file_source,
         }
 
         root_node = ManifestNode(compose(manifest, Loader=Loader))
