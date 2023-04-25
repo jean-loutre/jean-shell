@@ -350,7 +350,7 @@ class _LogPipeWriter(LinePipeWriter):
         self._logger = logger
 
     def write_line(self, line: str) -> None:
-        self._logger.info(line)
+        self._logger.debug(line)
 
 
 class TailPipeWriter(LinePipeWriter):

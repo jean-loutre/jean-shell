@@ -61,7 +61,7 @@ class Shell(ABC):
         """
 
         if self._logger:
-            self._logger.info(command)
+            self._logger.debug(command)
 
         async def _start(out: PipeWriter, err: PipeWriter) -> ShellProcess:
             return await self._start_process(out, err, command, env=self._env)

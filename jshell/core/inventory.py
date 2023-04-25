@@ -44,7 +44,7 @@ class Target:
         The logger name will be jshell.runtime.inventory.target_name. It's
         usable to filter log messages.
         """
-        return getLogger(f"jshell.runtime.inventory.{self.name}")
+        return getLogger(f"jshell.targets.{self.name}")
 
 
 class Inventory:
@@ -60,7 +60,7 @@ class Inventory:
     @property
     def log(self) -> Logger:
         """Return a python Logger usable to report concerning the whole inventory."""
-        return getLogger("jshell.runtime.inventory")
+        return getLogger("jshell.inventory")
 
     async def run(self, task_name: str, include: list[str] | None = None) -> None:
         """Run the specified task on this inventory.
@@ -85,7 +85,7 @@ class Inventory:
                 continue
             pending_task = self._get_target_task(task_name, target)
             if pending_task is not None:
-                self.log.info("Pushing %s task for %s", task_name, target.name)
+                self.log.info("starting task %s.%s", target.name, task_name)
                 yield pending_task
 
     def _get_target_task(
