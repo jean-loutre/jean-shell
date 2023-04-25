@@ -66,30 +66,30 @@ async def test_log() -> None:
     sh = MockShell(logger=logger)
 
     await sh("echo")
-    stdout_logger.info.assert_called_with("Yodeldidoo")
+    stdout_logger.debug.assert_called_with("Yodeldidoo")
 
     stdout_logger.reset_mock()
     with sh.raise_on_error(False):
         await sh("echo")
-    stdout_logger.info.assert_called_with("Yodeldidoo")
+    stdout_logger.debug.assert_called_with("Yodeldidoo")
 
     stdout_logger.reset_mock()
     with sh.log(None):
         await sh("echo")
-        stdout_logger.info.assert_not_called()
+        stdout_logger.debug.assert_not_called()
 
     logger_override = Mock()
     stdout_logger_override = Mock()
     logger_override.getChild = Mock(return_value=stdout_logger_override)
     with sh.log(logger_override):
         await (echo("Yodeldidoo\n") | sh(""))
-        stdout_logger.info.assert_not_called()
-        stdout_logger_override.info.assert_called_with("Yodeldidoo")
+        stdout_logger.debug.assert_not_called()
+        stdout_logger_override.debug.assert_called_with("Yodeldidoo")
 
     stdout_logger_override.reset_mock()
     await (echo("Yodeldidoo\n") | sh(""))
-    stdout_logger.info.assert_called_with("Yodeldidoo")
-    stdout_logger_override.info.assert_not_called()
+    stdout_logger.debug.assert_called_with("Yodeldidoo")
+    stdout_logger_override.debug.assert_not_called()
 
 
 async def test_raise_on_error() -> None:

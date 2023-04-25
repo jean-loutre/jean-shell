@@ -178,19 +178,19 @@ async def test_log() -> None:
 
     logger = Mock()
     await (_out("Yodeldidoo\n") | log(logger))
-    logger.info.assert_called_once_with("Yodeldidoo")
+    logger.debug.assert_called_once_with("Yodeldidoo")
 
     logger = Mock()
     await (_err("Yodeldidoo\n") | log(logger))
-    logger.info.assert_called_once_with("Yodeldidoo")
+    logger.debug.assert_called_once_with("Yodeldidoo")
 
     logger = Mock()
     await (_out("Yodeldidoo\n") | log(logger, stdout=False))
-    logger.info.assert_not_called()
+    logger.debug.assert_not_called()
 
     logger = Mock()
     await (_err("Yodeldidoo\n") | log(logger, stderr=False))
-    logger.info.assert_not_called()
+    logger.debug.assert_not_called()
 
 
 async def test_out() -> None:
