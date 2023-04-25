@@ -20,7 +20,7 @@ class Unix(Os):
         return self._sh(f"cat > {path}")
 
     async def link(self, target: str | Path, path: str | Path) -> None:
-        await self._sh(f"ln -s {target} {path}")
+        await self._sh(f"ln -sfn {target} {path}")
 
     async def set_permissions(
         self,

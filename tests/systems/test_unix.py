@@ -24,7 +24,7 @@ async def test_link() -> None:
     sh_mock = AsyncMock()
     unix = Unix(sh_mock)
     await unix.link("/link", "/target")
-    sh_mock.assert_awaited_once_with("ln -s /link /target")
+    sh_mock.assert_awaited_once_with("ln -sfn /link /target")
 
 
 async def test_set_permissions() -> None:
