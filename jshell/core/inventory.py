@@ -62,17 +62,17 @@ class Inventory:
         """Return a python Logger usable to report concerning the whole inventory."""
         return getLogger("jshell.inventory")
 
-    async def run(self, task_name: str, include: list[str] | None = None) -> None:
+    async def run(self, operation: str, include: list[str] | None = None) -> None:
         """Run the specified task on this inventory.
 
         Will run in parallell all tasks registered under the key "task_name"
         in the tasks fields of the targets of this inventory, or any method
         decorated with the @task decorator declared on Target classes.
 
-        :param task_name: Name of the task.
+        :param operation: Name of the task.
         :param include: List of pattern that target names to include must match.
         """
-        await gather(*self._get_tasks(task_name, include or []))
+        await gather(*self._get_tasks(operation, include or []))
 
     def _get_tasks(
         self, task_name: str, include: list[str]
