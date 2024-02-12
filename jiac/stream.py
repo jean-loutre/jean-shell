@@ -153,10 +153,14 @@ def multiplex(*streams: Stream | None) -> Stream | None:
 
     Args:
         *streams: Streams to aggregate, or None. If an element is None, it will
-                  simply be ignored. If all given children are None, None is
-                  returned. Things are made this way to work nicely with stdout
-                  and stderr streams of shell commands that can be set to None
-                  to be disabled.
+            simply be ignored.
+
+            If all given children are None, None is returned. Things are made
+            this way to work nicely with stdout and stderr streams of shell
+            commands that can be set to None to be disabled.
+
+            If the same stream is passed multiple times, it will be anyway
+            called only once when writing / closing the multiplex stream
 
     Return:
         A stream forwarding writes to all agregatted streams.
