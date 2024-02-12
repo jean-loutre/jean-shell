@@ -46,3 +46,18 @@ def unit_tests(session: Session) -> None:
 def devenv(session: Session) -> None:
     "Install development environment." ""
     session.install("-e", ".[dev]")
+
+
+@session()
+def docs(session: Session) -> None:
+    """Build documentation."""
+    session.install(
+        "mkdocs",
+        "mkdocs-awesome-pages-plugin",
+        "mkdocs-gen-files",
+        "mkdocs-literate-nav",
+        "mkdocs-material",
+        "mkdocs-section-index",
+        "mkdocstrings[python]",
+    )
+    session.run("mkdocs", "build")

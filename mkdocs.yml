@@ -1,0 +1,58 @@
+site_name: Jean-IaC
+site_url: https://jean-iac.collectivit.org
+site_dir: .build/docs
+nav:
+    - Home: index.md
+    - ...
+
+repo_url: https://git.collectivit.org/collectivit/jean-iac
+edit_uri: ""
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight: { anchor_linenums: true}
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed: {alternate_style: true }
+  - tables
+theme:
+  name: material
+  features:
+    - content.tabs.link
+    - header.autohide
+    - navigation.instant
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - navigation.top
+  palette: 
+    - scheme: default
+      primary: white
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - awesome-pages
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_category_heading: True
+            show_signature_annotations: True
+            show_source: False
+  - search
+  - gen-files:
+      scripts:
+      - docs/gen_api_pages.py
+  - literate-nav:
+      nav_file: api/SUMMARY.md
+  - section-index
