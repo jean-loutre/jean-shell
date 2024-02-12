@@ -1,3 +1,10 @@
+"""Abstract output and input stream interfaces and common implementations.
+
+Declares classes Stream, an output stream with async write and close methods,
+and InputStream with a single read method. These interface are used by the
+shell and common system to handle stdin, stderr and stdout, piping between
+commands, to a file, to a logging.Logger...
+"""
 from abc import ABC, abstractmethod
 from typing import Iterable
 from asyncio import gather, Event
@@ -7,13 +14,24 @@ from types import TracebackType
 
 
 class Stream(ABC):
+    """Interface for writable streams.
+
+    Object of this class can be used as a async context manager. When the
+    manager exits, the close method will be automatically called.
+
+    """
+
     @abstractmethod
     async def write(self, data: bytes) -> None:
-        ...
+        """Write given bytes to the stream.
+
+        Args:
+            data: Data to write to the stream.
+        """
 
     @abstractmethod
     async def close(self) -> None:
-        ...
+        """Close the stream."""
 
     async def __aenter__(self) -> Self:
         return self
@@ -28,12 +46,28 @@ class Stream(ABC):
 
 
 class InputStream(ABC):
+    """Interface for readable streams."""
+
     @abstractmethod
     async def read(self, n: int = -1) -> bytes:
-        ...
+        """Read bytes from the stream.
+
+        Implementers should block until the given n bytes are available, or
+        until the stream is closed.
+
+        Args:
+            n: Number of bytes to read. If -1 is given, read all data to the
+            stream's end.
+        """
 
 
 class NullStream:
+    """No-op stream.
+
+    This class can be used where a stream is expected, but nothing has to be
+    done with it.
+    """
+
     async def write(self, _: bytes) -> None:
         ...
 
