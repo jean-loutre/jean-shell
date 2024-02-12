@@ -1,5 +1,6 @@
-from jiac import MemoryStream, LineStream, LogStream, multiplex
+from jiac import MemoryStream, LineStream, LogStream, multiplex, pipe, Stream
 from logging import INFO
+from asyncio import timeout, gather, sleep
 from unittest.mock import Mock, AsyncMock
 
 
@@ -60,3 +61,28 @@ async def test_multiplex_stream() -> None:
     steven.close.assert_awaited_once()
 
     assert multiplex(None, None, None) is None
+
+
+async def test_pipe_stream() -> None:
+    async def _write(in_: Stream) -> None:
+        await in_.write(b"Wubba")
+        # Found nothing better to force InputStream to read data in two
+        # batches, but should work the immense majority of the time.
+        await sleep(0.1)
+        await in_.write(b" lubba")
+        await in_.close()
+
+    async with timeout(1):
+        in_, out = pipe()
+
+        async def _read() -> None:
+            assert await out.read() == b"Wubba lubba"
+
+        await gather(_write(in_), _read())
+
+        in_, out = pipe()
+
+        async def _read() -> None:
+            assert await out.read(64) == b"Wubba lubba"
+
+        await gather(_write(in_), _read())

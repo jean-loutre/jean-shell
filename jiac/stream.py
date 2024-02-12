@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Iterable
-from asyncio import gather
+from asyncio import gather, Event
 from logging import Logger, DEBUG
 from typing import Self
 from types import TracebackType
@@ -167,3 +167,57 @@ def multiplex(*streams: Stream | None) -> Stream | None:
         return None
 
     return _MultiplexStream(*children)
+
+
+class _PipeStreamBase:
+    def __init__(self, buffer: bytearray, data_available: Event, closed: Event) -> None:
+        self._buffer = buffer
+        self._data_available = data_available
+        self._data_available.clear()
+        self._closed = closed
+
+
+class _PipeStream(_PipeStreamBase, Stream):
+    async def write(self, data: bytes) -> None:
+        self._buffer.extend(data)
+        self._data_available.set()
+
+    async def close(self) -> None:
+        self._closed.set()
+        self._data_available.set()
+
+
+class _PipeInputStream(_PipeStreamBase, InputStream):
+    async def read(self, n: int = -1) -> bytes:
+        if n == -1:
+            await self._closed.wait()
+            data = self._buffer
+            self._buffer = bytearray()
+        else:
+            while len(self._buffer) < n:
+                await self._data_available.wait()
+                if self._closed.is_set():
+                    break
+                self._data_available.clear()
+            read_size = min(n, len(self._buffer))
+            data = self._buffer[0:read_size]
+            self._buffer = self._buffer[n:]
+
+        if len(self._buffer) == 0:
+            self._data_available.clear()
+
+        return data
+
+
+def pipe() -> tuple[Stream, InputStream]:
+    """Create a pipe between two streams.
+
+    Return:
+        A tuple (in, out), such as data written to "in" is readable from "out".
+    """
+    buffer = bytearray()
+    data_available = Event()
+    closed = Event()
+    return _PipeStream(buffer, data_available, closed), _PipeInputStream(
+        buffer, data_available, closed
+    )

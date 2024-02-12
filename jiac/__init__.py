@@ -1,5 +1,6 @@
 from .stream import (
     Stream,
+    pipe,
     InputStream,
     NullStream,
     MemoryStream,
@@ -16,4 +17,5 @@ __all__ = [
     "NullStream",
     "Stream",
     "multiplex",
+    "pipe",
 ]
