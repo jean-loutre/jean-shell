@@ -49,11 +49,11 @@ class Task(Generic[T]):
 
     def __init__(
         self,
-        execute: "ExecuteTask[T]",
-        *args: Any,
-        **kwargs: Any,
+        closure: "_Closure[T]",
+        explicit_dependencies: list["Task[Any]"] | None = None,
     ) -> None:
-        self._closure = _Closure(execute, *args, **kwargs)
+        self._closure = closure
+        self._explicit_dependencies = explicit_dependencies or []
         self._result: T | _Unset = _Unset()
         self._ready = Event()
         self._done = Event()
@@ -82,6 +82,29 @@ class Task(Generic[T]):
             for task_coroutine in tasks_coroutines:
                 group.create_task(task_coroutine)
 
+    def then(self, task: "Task[U]") -> "Task[U]":
+        """Execute given task after self.
+
+        Return a new task, that will execute the same function and wait for the
+        same dependencies as the given task, but will also wait for self to be
+        finished before being started.
+
+        This allow declaring dependencies between tasks that aren't related to
+        a task's function's arguments.
+
+        In terms of the task DAG, it adds an edge from self to task.
+
+        You can use the & operator between self and task to achieve the same
+        result.
+
+        Args:
+            task: The task to execute after self.
+        """
+        return Task(task._closure, task._explicit_dependencies + [self])
+
+    def __and__(self, task: "Task[U]") -> "Task[U]":
+        return self.then(task)
+
     def _schedule(
         self, scheduled_tasks: set["Task[Any]"]
     ) -> Iterable[Coroutine[Any, Any, None]]:
@@ -91,12 +114,16 @@ class Task(Generic[T]):
         yield self._run(self._closure)
         scheduled_tasks.add(self)
 
-        for task in self._closure.dependencies:
+        for task in chain(self._closure.dependencies, self._explicit_dependencies):
             task._dependent_tasks_done.add(self._done)
             yield from task._schedule(scheduled_tasks)
 
-    async def _run(self, callback: "_Closure[T]") -> None:
-        task_return = await callback.start()
+    async def _run(self, closure: "_Closure[T]") -> None:
+        async with TaskGroup() as group:
+            for explicit_dependency in self._explicit_dependencies:
+                group.create_task(explicit_dependency._wait_result())
+
+        task_return = await closure.start()
 
         if isinstance(task_return, AbstractAsyncContextManager):
             self._result = await task_return.__aenter__()
@@ -147,7 +174,7 @@ def task() -> (
     def _decorate(func: "ExecuteTask[T]") -> Callable[..., Task[T]]:
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            return Task(func, *args, **kwargs)
+            return Task(_Closure(func, *args, **kwargs))
 
         return _wrapper
 
@@ -158,8 +185,8 @@ class _Closure(Generic[T]):
     def __init__(
         self,
         function: ExecuteTask[T],
-        *args: Any,
-        **kwargs: Any,
+        *args: list[Any],
+        **kwargs: dict[str, Any],
     ) -> None:
         self._function = function
         self._args = list(args)

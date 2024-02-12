@@ -1,4 +1,5 @@
 from jiac import task, Task
+from asyncio import sleep
 from unittest.mock import AsyncMock
 from typing import AsyncIterator
 from contextlib import asynccontextmanager
@@ -37,3 +38,33 @@ async def test_async_context_manager_task() -> None:
     await Task.run([smooth_dinglepop(take_dinglepop())])
 
     assert sequence == ["one", "two", "three"]
+
+
+async def test_explicit_dependencies() -> None:
+    sequence = []
+
+    @task()
+    async def take_dinglepop() -> None:
+        await sleep(0.1)
+        sequence.append("one")
+
+    @task()
+    async def smooth_dinglepop() -> str:
+        sequence.append("two")
+        return "smoothed dinglepop"
+
+    @task()
+    async def rub_shleem(dinglepop: str) -> None:
+        assert dinglepop == "smoothed dinglepop"
+
+    smooth_task = take_dinglepop().then(smooth_dinglepop())
+    await Task.run([rub_shleem(smooth_task)])
+
+    assert sequence == ["one", "two"]
+
+    sequence.clear()
+    # alternative form
+    smooth_task = take_dinglepop() & smooth_dinglepop()
+    await Task.run([rub_shleem(smooth_task)])
+
+    assert sequence == ["one", "two"]
