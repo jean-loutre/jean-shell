@@ -1,6 +1,6 @@
-from jiac import MemoryStream, LineStream, LogStream
+from jiac import MemoryStream, LineStream, LogStream, multiplex
 from logging import INFO
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 
 async def test_memory_stream() -> None:
@@ -42,3 +42,20 @@ async def test_log_stream() -> None:
         logger.log.reset_mock()
 
     logger.log.assert_called_once_with(INFO, "Dee doo")
+
+
+async def test_multiplex_stream() -> None:
+    peter = AsyncMock()
+    steven = AsyncMock()
+
+    stream = multiplex(peter, steven, None)
+    assert stream is not None
+    async with stream:
+        await stream.write(b"Wubba lubba")
+        peter.write.assert_awaited_once_with(b"Wubba lubba")
+        steven.write.assert_awaited_once_with(b"Wubba lubba")
+
+    peter.close.assert_awaited_once()
+    steven.close.assert_awaited_once()
+
+    assert multiplex(None, None, None) is None

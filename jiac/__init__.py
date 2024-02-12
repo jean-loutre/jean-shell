@@ -1,4 +1,12 @@
-from .stream import Stream, InputStream, NullStream, MemoryStream, LineStream, LogStream
+from .stream import (
+    Stream,
+    InputStream,
+    NullStream,
+    MemoryStream,
+    LineStream,
+    LogStream,
+    multiplex,
+)
 
 __all__ = [
     "InputStream",
@@ -7,4 +15,5 @@ __all__ = [
     "MemoryStream",
     "NullStream",
     "Stream",
+    "multiplex",
 ]
