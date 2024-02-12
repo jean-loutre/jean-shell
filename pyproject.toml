@@ -1,0 +1,36 @@
+[project]
+name = "Jean-IaC"
+version = "0.0.1"
+authors = [
+  {name = "Jean-Loutre", email ="jean-loutre@collectivit.org"}
+]
+description = "Lightweight infrastructure as code framework"
+license = {text = "WTFPL"}
+readme = "README.md"
+dependencies = [
+  "asyncssh",
+  "click",
+  "jinja2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "nox",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "pytest-datadir",
+]
+
+[build-system]
+requires = ["setuptools>=45"]
+
+[tool.setuptools.package-data]
+jiac = ["py.typed"]
+
+[tool.mypy]
+strict = true
+files = "jiac/**/*.py,tests/**/*.py,noxfile.py"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

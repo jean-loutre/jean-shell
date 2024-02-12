@@ -1,0 +1,12 @@
+**/__pycache__
+.build
+.coverage
+.eggs
+.mypy_cache
+.nox
+.pytest_cache
+.ruff_cache
+.venv
+build
+dist
+jiac.egg-info
