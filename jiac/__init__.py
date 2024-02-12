@@ -9,9 +9,13 @@ from .stream import (
     multiplex,
 )
 
+from .task import task, Task
+
 __all__ = [
     "InputStream",
     "LineStream",
+    "Task",
+    "task",
     "LogStream",
     "MemoryStream",
     "NullStream",
