@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from logging import Logger, DEBUG
 from typing import Self
 from types import TracebackType
 
@@ -92,3 +93,24 @@ class LineStream(Stream):
     async def close(self) -> None:
         if self._pending_line:
             self.write_line(self._pending_line)
+
+
+class LogStream(LineStream):
+    """Stream sending each received line to a python Logger.
+
+    Uses the standard python logging facility, from module "logging".
+    """
+
+    def __init__(self, logger: Logger, level: int = DEBUG) -> None:
+        """Initialize the log stream.
+
+        Args:
+            logger: The logging.Logger to use to log messages.
+            level: The logging level to use for each sent log message.
+        """
+        super().__init__()
+        self._logger = logger
+        self._level = level
+
+    def write_line(self, line: str) -> None:
+        self._logger.log(self._level, line)

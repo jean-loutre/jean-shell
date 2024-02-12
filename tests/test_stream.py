@@ -1,4 +1,6 @@
-from jiac import MemoryStream, LineStream
+from jiac import MemoryStream, LineStream, LogStream
+from logging import INFO
+from unittest.mock import Mock
 
 
 async def test_memory_stream() -> None:
@@ -27,3 +29,16 @@ async def test_line_stream() -> None:
         assert lines == ["YodelYodel"]
 
     assert lines == ["YodelYodel", "Dee doo"]
+
+
+async def test_log_stream() -> None:
+    logger = Mock()
+    async with LogStream(logger, INFO) as stream:
+        await stream.write(b"Yodel")
+        logger.log.assert_not_called()
+
+        await stream.write(b"Yodel\nDee doo")
+        logger.log.assert_called_once_with(INFO, "YodelYodel")
+        logger.log.reset_mock()
+
+    logger.log.assert_called_once_with(INFO, "Dee doo")

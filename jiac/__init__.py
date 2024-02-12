@@ -1,3 +1,10 @@
-from .stream import Stream, InputStream, NullStream, MemoryStream, LineStream
+from .stream import Stream, InputStream, NullStream, MemoryStream, LineStream, LogStream
 
-__all__ = ["Stream", "InputStream", "NullStream", "MemoryStream", "LineStream"]
+__all__ = [
+    "InputStream",
+    "LineStream",
+    "LogStream",
+    "MemoryStream",
+    "NullStream",
+    "Stream",
+]
