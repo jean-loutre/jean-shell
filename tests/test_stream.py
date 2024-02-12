@@ -49,6 +49,7 @@ async def test_multiplex_stream() -> None:
     steven = AsyncMock()
 
     stream = multiplex(peter, steven, None)
+    stream = multiplex(peter, steven, stream)
     assert stream is not None
     async with stream:
         await stream.write(b"Wubba lubba")
