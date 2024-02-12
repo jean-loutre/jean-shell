@@ -34,3 +34,11 @@ files = "jiac/**/*.py,tests/**/*.py,noxfile.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.coverage.report]
+exclude_also = [
+    "pass",
+    "...",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
