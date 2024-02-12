@@ -59,3 +59,36 @@ class MemoryStream:
 
     async def close(self) -> None:
         ...
+
+
+class LineStream(Stream):
+    """Stream writing lines at a time."""
+
+    def __init__(self) -> None:
+        self._pending_line = ""
+
+    async def write(self, data: bytes) -> None:
+        string_content = self._pending_line + data.decode("utf-8", errors="ignore")
+        self._pending_line = ""
+        lines = string_content.split("\n")
+
+        if string_content[-1] != "\n":
+            self._pending_line = lines.pop()
+
+        if len(lines) > 1 and lines[-1] == "":
+            lines.pop()
+
+        for line in lines:
+            self.write_line(line)
+
+    @abstractmethod
+    def write_line(self, line: str) -> None:
+        """Method called each time a full line is written to stream.
+
+        Args:
+            line: The line to write.
+        """
+
+    async def close(self) -> None:
+        if self._pending_line:
+            self.write_line(self._pending_line)
