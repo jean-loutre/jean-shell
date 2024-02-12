@@ -102,8 +102,40 @@ class Task(Generic[T]):
         """
         return Task(task._closure, task._explicit_dependencies + [self])
 
+    def along_with(self, task: "Task[U]") -> "Task[None]":
+        """Execute given task in parallel .
+
+        Return a new task, that will execute noting, but will wait for both
+        self and the given task to be finished before being started.
+
+        This allow declaring dependencies between tasks that aren't related to
+        a task's function's arguments.
+
+        In terms of the task DAG, it adds a new noop node to the graph, and an
+        edge from self to the created node, and another from task to the
+        created node. If self or the given task are already noops, the task
+        node will be discarded and it's dependencies directly linked to the
+        newly created node.
+
+        You can use the // operator to achieve the same result.
+
+        Args:
+            task: The task to execute along with.
+        """
+        explicit_dependencies = []
+        for it in [self, task]:
+            if isinstance(it, Noop):
+                explicit_dependencies.extend(it._explicit_dependencies)
+            else:
+                explicit_dependencies.append(it)
+
+        return Noop(explicit_dependencies)
+
     def __and__(self, task: "Task[U]") -> "Task[U]":
         return self.then(task)
+
+    def __floordiv__(self, task: "Task[U]") -> "Task[None]":
+        return self.along_with(task)
 
     def _schedule(
         self, scheduled_tasks: set["Task[Any]"]
@@ -145,6 +177,15 @@ class Task(Generic[T]):
         await self._ready.wait()
         assert not isinstance(self._result, _Unset)
         return self._result
+
+
+async def _noop() -> None:
+    ...
+
+
+class Noop(Task[None]):
+    def __init__(self, explicit_dependencies: list["Task[Any]"] | None = None) -> None:
+        super().__init__(_Closure(_noop), explicit_dependencies)
 
 
 # @desc Type of function that can be wrapped in tasks.

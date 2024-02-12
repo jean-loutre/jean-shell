@@ -40,7 +40,7 @@ async def test_async_context_manager_task() -> None:
     assert sequence == ["one", "two", "three"]
 
 
-async def test_explicit_dependencies() -> None:
+async def test_then() -> None:
     sequence = []
 
     @task()
@@ -68,3 +68,28 @@ async def test_explicit_dependencies() -> None:
     await Task.run([rub_shleem(smooth_task)])
 
     assert sequence == ["one", "two"]
+
+
+async def test_along_with() -> None:
+    take_dinglepop_mock = AsyncMock()
+    take_dinglepop = task()(take_dinglepop_mock)()
+
+    smooth_dinglepop_mock = AsyncMock()
+    smooth_dinglepop = task()(smooth_dinglepop_mock)()
+
+    # check adding several times the same task does nothing
+    await Task.run(
+        [smooth_dinglepop.along_with(take_dinglepop).along_with(smooth_dinglepop)]
+    )
+
+    take_dinglepop_mock.assert_awaited_once()
+    smooth_dinglepop_mock.assert_awaited_once()
+
+    take_dinglepop_mock.reset_mock()
+    smooth_dinglepop_mock.reset_mock()
+
+    # check adding several times the same task does nothing
+    await Task.run([take_dinglepop // smooth_dinglepop // take_dinglepop])
+
+    take_dinglepop_mock.assert_awaited_once()
+    smooth_dinglepop_mock.assert_awaited_once()
