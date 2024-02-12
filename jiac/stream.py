@@ -78,9 +78,6 @@ class LineStream(Stream):
         if string_content[-1] != "\n":
             self._pending_line = lines.pop()
 
-        if len(lines) > 1 and lines[-1] == "":
-            lines.pop()
-
         for line in lines:
             self.write_line(line)
 
