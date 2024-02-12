@@ -32,7 +32,30 @@ class InputStream(ABC):
 
 class NullStream:
     async def write(self, _: bytes) -> None:
-        pass
+        ...
 
     async def close(self) -> None:
-        pass
+        ...
+
+
+class MemoryStream:
+    """Stream implementation writing to a bytarray"""
+
+    def __init__(self, buffer: bytearray | None = None) -> None:
+        """Initialize the memory stream.
+
+        Args:
+            buffer: The bytarray to write to. If none, a new bytearray will be
+                    created.
+        """
+        self._buffer = buffer if buffer is not None else bytearray()
+
+    @property
+    def buffer(self) -> bytearray:
+        return self._buffer
+
+    async def write(self, data: bytes) -> None:
+        self._buffer.extend(data)
+
+    async def close(self) -> None:
+        ...
