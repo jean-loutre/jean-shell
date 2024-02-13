@@ -17,11 +17,12 @@ from typing import (
     TypeVar,
     AsyncContextManager,
     ParamSpec,
+    Iterator,
 )
 from functools import wraps
 from itertools import chain
 from asyncio import Event, TaskGroup
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, contextmanager
 
 
 T = TypeVar("T", covariant=True)
@@ -47,15 +48,16 @@ class Task(Generic[T]):
     ```
     """
 
+    _scope_tags: list[str] = []
+
     def __init__(
         self,
         closure: "_Closure[T]",
         explicit_dependencies: list["Task[Any]"] | None = None,
-        tags: Iterable[str] | None = None,
     ) -> None:
         self._closure = closure
         self._explicit_dependencies = explicit_dependencies or []
-        self._tags = set(tags or [])
+        self._tags = set(Task._scope_tags)
         self._result: T | _Unset = _Unset()
         self._ready = Event()
         self._done = Event()
@@ -89,6 +91,24 @@ class Task(Generic[T]):
         async with TaskGroup() as group:
             for task_coroutine in tasks_coroutines:
                 group.create_task(task_coroutine)
+
+    @staticmethod
+    @contextmanager
+    def tags(*tags: str) -> Iterator[None]:
+        """Add tags to all tasks initialized in a scope.
+
+        Return a context manager. All tasks created inside the context manager will
+        have the given tags added as their tags. This allows defining group of
+        tasks by declaring them in the scope of a context manager.
+
+        Args:
+            *tags: List of tags to apply to task declared in the scope of the
+                   context manager.
+        """
+        old_tags = Task._scope_tags
+        Task._scope_tags = old_tags + list(tags)
+        yield
+        Task._scope_tags = old_tags
 
     def then(self, task: "Task[U]") -> "Task[U]":
         """Execute given task after self.
@@ -230,7 +250,8 @@ def task(
     def _decorate(func: "ExecuteTask[T]") -> Callable[..., Task[T]]:
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            return Task(_Closure(func, *args, **kwargs), tags=tags)
+            with Task.tags(*tags):
+                return Task(_Closure(func, *args, **kwargs))
 
         return _wrapper
 

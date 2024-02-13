@@ -130,3 +130,18 @@ async def test_task_tags() -> None:
     await Task.run([dinglepop, schleem], [["schleem", "dinglepop"]])
     dinglepop_mock.assert_not_awaited()
     schleem_mock.assert_not_awaited()
+
+
+async def test_task_scope_tags() -> None:
+    dinglepop_mock = AsyncMock()
+    with Task.tags("plumbus"):
+        dinglepop = task()(dinglepop_mock)()
+
+    await Task.run([dinglepop], [["plumbus"]])
+
+    dinglepop_mock.assert_awaited_once()
+    dinglepop_mock.reset_mock()
+
+    await Task.run([dinglepop], [["schleem"]])
+
+    dinglepop_mock.assert_not_awaited()
