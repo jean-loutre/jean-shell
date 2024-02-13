@@ -93,3 +93,40 @@ async def test_along_with() -> None:
 
     take_dinglepop_mock.assert_awaited_once()
     smooth_dinglepop_mock.assert_awaited_once()
+
+
+async def test_task_tags() -> None:
+    dinglepop_mock = AsyncMock()
+    dinglepop = task("plumbus", "dinglepop")(dinglepop_mock)()
+
+    schleem_mock = AsyncMock()
+    schleem = task("plumbus", "schleem")(schleem_mock)()
+
+    # check adding several times the same task does nothing
+    await Task.run([dinglepop, schleem], [["dinglepop"]])
+
+    dinglepop_mock.assert_awaited_once()
+    schleem_mock.assert_not_awaited()
+
+    dinglepop_mock.reset_mock()
+    schleem_mock.reset_mock()
+    await Task.run([dinglepop, schleem], [["plumbus"]])
+
+    dinglepop_mock.assert_awaited_once()
+    schleem_mock.assert_awaited_once()
+
+    dinglepop_mock.reset_mock()
+    schleem_mock.reset_mock()
+    await Task.run(
+        [dinglepop, schleem], [["plumbus", "dinglepop"], ["plumbus", "schleem"]]
+    )
+
+    dinglepop_mock.assert_awaited_once()
+    schleem_mock.assert_awaited_once()
+
+    dinglepop_mock.reset_mock()
+    schleem_mock.reset_mock()
+
+    await Task.run([dinglepop, schleem], [["schleem", "dinglepop"]])
+    dinglepop_mock.assert_not_awaited()
+    schleem_mock.assert_not_awaited()

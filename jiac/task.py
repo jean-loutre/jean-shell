@@ -51,31 +51,39 @@ class Task(Generic[T]):
         self,
         closure: "_Closure[T]",
         explicit_dependencies: list["Task[Any]"] | None = None,
+        tags: Iterable[str] | None = None,
     ) -> None:
         self._closure = closure
         self._explicit_dependencies = explicit_dependencies or []
+        self._tags = set(tags or [])
         self._result: T | _Unset = _Unset()
         self._ready = Event()
         self._done = Event()
         self._dependent_tasks_done: set[Event] = set()
 
     @staticmethod
-    async def run(tasks: Iterable["Task[Any]"]) -> None:
+    async def run(
+        tasks: Iterable["Task[Any]"], tags: Iterable[Iterable[str]] | None = None
+    ) -> None:
         """Run the given tasks.
 
-        Build the graph task, using the return value -> argument relation
-        between tasks, and run them. If any task raises an exception, the whole
-        task graph is canceled.
+        Build the graph task, using the return value -> argument and explicit
+        dependencies relations between tasks, and run them. If any task raises
+        an exception, the whole task graph is canceled.
+
+        Can be given an iterable of tag set, which are iterable of string
+        themselves. If specified, only the tasks that have all the tags of at
+        least one tag set will be selected. All the dependencies of selected
+        tags will be selected.
 
         Args:
             tasks: An iterable of Tasks of any type.
+            tags: An iterable of tag set.
         """
         scheduled_tasks: set[Task[Any]] = set()
+        tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
         tasks_coroutines = chain.from_iterable(
-            task._schedule(
-                scheduled_tasks,
-            )
-            for task in tasks
+            task._schedule(scheduled_tasks, tag_sets) for task in tasks
         )
 
         async with TaskGroup() as group:
@@ -138,9 +146,16 @@ class Task(Generic[T]):
         return self.along_with(task)
 
     def _schedule(
-        self, scheduled_tasks: set["Task[Any]"]
+        self,
+        scheduled_tasks: set["Task[Any]"],
+        tag_sets: set[frozenset[str]],
+        force_schedule: bool = False,
     ) -> Iterable[Coroutine[Any, Any, None]]:
-        if self in scheduled_tasks:
+        if self in scheduled_tasks or not (
+            force_schedule
+            or len(tag_sets) == 0
+            or any(tags & self._tags == tags for tags in tag_sets)
+        ):
             return
 
         yield self._run(self._closure)
@@ -148,7 +163,7 @@ class Task(Generic[T]):
 
         for task in chain(self._closure.dependencies, self._explicit_dependencies):
             task._dependent_tasks_done.add(self._done)
-            yield from task._schedule(scheduled_tasks)
+            yield from task._schedule(scheduled_tasks, tag_sets, True)
 
     async def _run(self, closure: "_Closure[T]") -> None:
         async with TaskGroup() as group:
@@ -192,11 +207,11 @@ class Noop(Task[None]):
 ExecuteTask = Callable[..., Awaitable[T] | AsyncContextManager[T]]
 
 
-def task() -> (
-    Callable[
-        [Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]
-    ]
-):
+def task(
+    *tags: str,
+) -> Callable[
+    [Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]
+]:
     """Transform an async function into a task factory.
 
     Decorate a function so that for each argument, the decorator accepts
@@ -215,7 +230,7 @@ def task() -> (
     def _decorate(func: "ExecuteTask[T]") -> Callable[..., Task[T]]:
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            return Task(_Closure(func, *args, **kwargs))
+            return Task(_Closure(func, *args, **kwargs), tags=tags)
 
         return _wrapper
 
