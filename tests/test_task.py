@@ -110,7 +110,7 @@ async def test_task_tags() -> None:
         take_dinglebop_mock.reset_mock()
         smooth_dinglebop_mock.reset_mock()
 
-        await (take_dinglebop() // smooth_dinglebop()).run(tags)
+        await (take_dinglebop() // smooth_dinglebop()).run(*tags)
 
     await _run(["dinglebop"])
 
@@ -138,12 +138,12 @@ async def test_task_scope_tags() -> None:
     with Task.tags("plumbus"):
         dinglebop = task()(dinglebop_mock)()
 
-    await dinglebop.run([["plumbus"]])
+    await dinglebop.run(["plumbus"])
 
     dinglebop_mock.assert_awaited_once()
     dinglebop_mock.reset_mock()
 
-    await dinglebop.run([["schleem"]])
+    await dinglebop.run(["schleem"])
 
     dinglebop_mock.assert_not_awaited()
 
@@ -158,7 +158,7 @@ async def test_skip_task() -> None:
         smooth_dinglebop_mock.reset_mock()
         push_dinglebop_mock.reset_mock()
 
-        await (take_dinglebop() | smooth_dinglebop() | push_dinglebop()).run(tags)
+        await (take_dinglebop() | smooth_dinglebop() | push_dinglebop()).run(*tags)
 
     await _run()
 

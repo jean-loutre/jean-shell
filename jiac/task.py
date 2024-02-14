@@ -65,7 +65,7 @@ class Task(Generic[T]):
         self._tags = tags or frozenset(Task._scope_tags)
         self._skip = skip
 
-    async def run(self, tags: Iterable[Iterable[str]] | None = None) -> None:
+    async def run(self, *tags: Iterable[str]) -> None:
         """Run the given tasks.
 
         Build the graph task, using the return value -> argument and explicit
