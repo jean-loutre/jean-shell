@@ -315,8 +315,6 @@ class _ScheduledTask(Generic[T]):
         self._ready = Event()
         self._done = Event()
         self._dependent_tasks_done: list[Event] = []
-        self._ready = Event()
-        self._done = Event()
 
         for arg in chain(args, kwargs.values()):
             if isinstance(arg, _ScheduledTask):
