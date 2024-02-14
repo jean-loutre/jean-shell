@@ -17,7 +17,7 @@ async def test_tasks_args_dependencies() -> None:
     smooth_dinglebop_mock, smooth_dinglebop = mock_task()
 
     dinglebop = take_dinglebop()
-    await Task.run([smooth_dinglebop(dinglebop, dinglebop, "schleems")])
+    await smooth_dinglebop(dinglebop, dinglebop, "schleems").run()
 
     # Should've been awaited only once
     take_dinglebop_mock.assert_awaited_once()
@@ -39,7 +39,7 @@ async def test_async_context_manager_task() -> None:
         assert dinglebop == "dinglebop"
         sequence.append("two")
 
-    await Task.run([smooth_dinglebop(take_dinglebop())])
+    await smooth_dinglebop(take_dinglebop()).run()
 
     assert sequence == ["one", "two", "three"]
 
@@ -64,25 +64,17 @@ async def test_then() -> None:
     take_dinglebop_task = take_dinglebop()
     smooth_dinglebop_task = smooth_dinglebop(take_dinglebop_task)
 
-    await Task.run(
-        [
-            push_through_grumbo(
-                take_dinglebop_task, take_dinglebop_task.then(smooth_dinglebop_task)
-            )
-        ]
-    )
+    await push_through_grumbo(
+        take_dinglebop_task, take_dinglebop_task.then(smooth_dinglebop_task)
+    ).run()
 
     assert sequence == ["one", "two"]
 
     sequence.clear()
     # alternative form
-    await Task.run(
-        [
-            push_through_grumbo(
-                take_dinglebop_task, take_dinglebop_task & smooth_dinglebop_task
-            )
-        ]
-    )
+    await push_through_grumbo(
+        take_dinglebop_task, take_dinglebop_task & smooth_dinglebop_task
+    ).run()
 
     assert sequence == ["one", "two"]
 
@@ -93,20 +85,18 @@ async def test_along_with() -> None:
 
     # check adding several times the same task does nothing
     take_dinglebop_task = take_dinglebop()
-    await Task.run(
-        [
-            smooth_dinglebop()
-            .along_with(take_dinglebop_task)
-            .along_with(take_dinglebop_task)
-        ]
-    )
+    await (
+        smooth_dinglebop()
+        .along_with(take_dinglebop_task)
+        .along_with(take_dinglebop_task)
+    ).run()
 
     take_dinglebop_mock.assert_awaited_once()
     smooth_dinglebop_mock.assert_awaited_once()
 
     take_dinglebop_mock.reset_mock()
     smooth_dinglebop_mock.reset_mock()
-    await Task.run([take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task])
+    await (take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task).run()
 
     take_dinglebop_mock.assert_awaited_once()
     smooth_dinglebop_mock.assert_awaited_once()
@@ -120,7 +110,7 @@ async def test_task_tags() -> None:
         take_dinglebop_mock.reset_mock()
         smooth_dinglebop_mock.reset_mock()
 
-        await Task.run([take_dinglebop(), smooth_dinglebop()], list(tags))
+        await (take_dinglebop() // smooth_dinglebop()).run(tags)
 
     await _run(["dinglebop"])
 
@@ -148,12 +138,12 @@ async def test_task_scope_tags() -> None:
     with Task.tags("plumbus"):
         dinglebop = task()(dinglebop_mock)()
 
-    await Task.run([dinglebop], [["plumbus"]])
+    await dinglebop.run([["plumbus"]])
 
     dinglebop_mock.assert_awaited_once()
     dinglebop_mock.reset_mock()
 
-    await Task.run([dinglebop], [["schleem"]])
+    await dinglebop.run([["schleem"]])
 
     dinglebop_mock.assert_not_awaited()
 
@@ -168,9 +158,7 @@ async def test_skip_task() -> None:
         smooth_dinglebop_mock.reset_mock()
         push_dinglebop_mock.reset_mock()
 
-        await Task.run(
-            [take_dinglebop() | smooth_dinglebop() | push_dinglebop()], list(tags)
-        )
+        await (take_dinglebop() | smooth_dinglebop() | push_dinglebop()).run(tags)
 
     await _run()
 

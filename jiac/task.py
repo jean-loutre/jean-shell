@@ -65,10 +65,7 @@ class Task(Generic[T]):
         self._tags = tags or frozenset(Task._scope_tags)
         self._skip = skip
 
-    @staticmethod
-    async def run(
-        tasks: Iterable["Task[Any]"], tags: Iterable[Iterable[str]] | None = None
-    ) -> None:
+    async def run(self, tags: Iterable[Iterable[str]] | None = None) -> None:
         """Run the given tasks.
 
         Build the graph task, using the return value -> argument and explicit
@@ -86,8 +83,7 @@ class Task(Generic[T]):
         """
         scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
         tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
-        for task in tasks:
-            task._schedule(scheduled_tasks, tag_sets)
+        self._schedule(scheduled_tasks, tag_sets)
 
         async with TaskGroup() as group:
             for scheduled_task in scheduled_tasks.values():
