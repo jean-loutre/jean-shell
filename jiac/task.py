@@ -227,32 +227,35 @@ class Task(Generic[T]):
 
         if not task_selected and self._skip is not None:
             self._skip._schedule(scheduled_tasks, tag_sets)
-        elif task_selected or force:
+            return
 
-            def _schedule(dependency: Any) -> Any:
-                if isinstance(dependency, Task):
-                    dependency._schedule(scheduled_tasks, tag_sets, True)
+        def _schedule(dependency: Any) -> Any:
+            if isinstance(dependency, Task):
+                dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
 
-            for dependency in chain(
-                self._explicit_dependencies,
-                self._args,
-                self._kwargs.values(),
-            ):
-                _schedule(dependency)
+        for dependency in chain(
+            self._explicit_dependencies,
+            self._args,
+            self._kwargs.values(),
+        ):
+            _schedule(dependency)
 
-            def _scheduled(arg: Any) -> Any:
-                if isinstance(arg, Task):
-                    return scheduled_tasks[arg]
-                return arg
+        def _scheduled(arg: Any) -> Any:
+            if isinstance(arg, Task):
+                return scheduled_tasks[arg]
+            return arg
 
-            scheduled_task = _ScheduledTask(
-                self._function,
-                [_scheduled(it) for it in self._args],
-                {key: _scheduled(value) for key, value in self._kwargs.items()},
-                [scheduled_tasks[dep] for dep in self._explicit_dependencies],
-            )
+        if not task_selected and not force:
+            return
 
-            scheduled_tasks[self] = scheduled_task
+        scheduled_task = _ScheduledTask(
+            self._function,
+            [_scheduled(it) for it in self._args],
+            {key: _scheduled(value) for key, value in self._kwargs.items()},
+            [scheduled_tasks[dep] for dep in self._explicit_dependencies],
+        )
+
+        scheduled_tasks[self] = scheduled_task
 
 
 async def _noop() -> None:
