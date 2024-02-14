@@ -1,23 +1,27 @@
 from jiac import task, Task
 from asyncio import sleep
 from unittest.mock import AsyncMock
-from typing import AsyncIterator
+from typing import AsyncIterator, Any, Callable
 from contextlib import asynccontextmanager
 
 
-async def test_chain_tasks() -> None:
-    take_dinglepop_mock = AsyncMock(return_value="dinglepop")
-    take_dinglepop = task()(take_dinglepop_mock)
+def mock_task(
+    *tags: str, return_value: Any = None
+) -> tuple[AsyncMock, Callable[..., Task[Any]]]:
+    task_mock = AsyncMock(return_value=return_value)
+    return task_mock, task(*tags)(task_mock)
 
-    smooth_dinglepop_mock = AsyncMock()
-    smooth_dinglepop = task()(smooth_dinglepop_mock)
 
-    dinglepop = take_dinglepop()
-    await Task.run([smooth_dinglepop(dinglepop, dinglepop, "schleems")])
+async def test_tasks_args_dependencies() -> None:
+    take_dinglebop_mock, take_dinglebop = mock_task(return_value="dinglebop")
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task()
+
+    dinglebop = take_dinglebop()
+    await Task.run([smooth_dinglebop(dinglebop, dinglebop, "schleems")])
 
     # Should've been awaited only once
-    take_dinglepop_mock.assert_awaited_once()
-    smooth_dinglepop_mock.assert_awaited_once_with("dinglepop", "dinglepop", "schleems")
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_awaited_once_with("dinglebop", "dinglebop", "schleems")
 
 
 async def test_async_context_manager_task() -> None:
@@ -25,17 +29,17 @@ async def test_async_context_manager_task() -> None:
 
     @task()
     @asynccontextmanager
-    async def take_dinglepop() -> AsyncIterator[str]:
+    async def take_dinglebop() -> AsyncIterator[str]:
         sequence.append("one")
-        yield "dinglepop"
+        yield "dinglebop"
         sequence.append("three")
 
     @task()
-    async def smooth_dinglepop(dinglepop: str) -> None:
-        assert dinglepop == "dinglepop"
+    async def smooth_dinglebop(dinglebop: str) -> None:
+        assert dinglebop == "dinglebop"
         sequence.append("two")
 
-    await Task.run([smooth_dinglepop(take_dinglepop())])
+    await Task.run([smooth_dinglebop(take_dinglebop())])
 
     assert sequence == ["one", "two", "three"]
 
@@ -44,141 +48,144 @@ async def test_then() -> None:
     sequence = []
 
     @task()
-    async def take_dinglepop() -> None:
+    async def take_dinglebop() -> None:
         await sleep(0.1)
         sequence.append("one")
 
     @task()
-    async def smooth_dinglepop() -> str:
+    async def smooth_dinglebop(dinglebop: str) -> str:
         sequence.append("two")
-        return "smoothed dinglepop"
+        return "smoothed dinglebop"
 
     @task()
-    async def rub_shleem(dinglepop: str) -> None:
-        assert dinglepop == "smoothed dinglepop"
+    async def push_through_grumbo(base_dinglebop: str, smoothed_dinglebop: str) -> None:
+        assert smoothed_dinglebop == "smoothed dinglebop"
 
-    smooth_task = take_dinglepop().then(smooth_dinglepop())
-    await Task.run([rub_shleem(smooth_task)])
+    take_dinglebop_task = take_dinglebop()
+    smooth_dinglebop_task = smooth_dinglebop(take_dinglebop_task)
+
+    await Task.run(
+        [
+            push_through_grumbo(
+                take_dinglebop_task, take_dinglebop_task.then(smooth_dinglebop_task)
+            )
+        ]
+    )
 
     assert sequence == ["one", "two"]
 
     sequence.clear()
     # alternative form
-    smooth_task = take_dinglepop() & smooth_dinglepop()
-    await Task.run([rub_shleem(smooth_task)])
+    await Task.run(
+        [
+            push_through_grumbo(
+                take_dinglebop_task, take_dinglebop_task & smooth_dinglebop_task
+            )
+        ]
+    )
 
     assert sequence == ["one", "two"]
 
 
 async def test_along_with() -> None:
-    take_dinglepop_mock = AsyncMock()
-    take_dinglepop = task()(take_dinglepop_mock)()
-
-    smooth_dinglepop_mock = AsyncMock()
-    smooth_dinglepop = task()(smooth_dinglepop_mock)()
+    take_dinglebop_mock, take_dinglebop = mock_task()
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task()
 
     # check adding several times the same task does nothing
+    take_dinglebop_task = take_dinglebop()
     await Task.run(
-        [smooth_dinglepop.along_with(take_dinglepop).along_with(smooth_dinglepop)]
+        [
+            smooth_dinglebop()
+            .along_with(take_dinglebop_task)
+            .along_with(take_dinglebop_task)
+        ]
     )
 
-    take_dinglepop_mock.assert_awaited_once()
-    smooth_dinglepop_mock.assert_awaited_once()
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_awaited_once()
 
-    take_dinglepop_mock.reset_mock()
-    smooth_dinglepop_mock.reset_mock()
+    take_dinglebop_mock.reset_mock()
+    smooth_dinglebop_mock.reset_mock()
+    await Task.run([take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task])
 
-    # check adding several times the same task does nothing
-    await Task.run([take_dinglepop // smooth_dinglepop // take_dinglepop])
-
-    take_dinglepop_mock.assert_awaited_once()
-    smooth_dinglepop_mock.assert_awaited_once()
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_awaited_once()
 
 
 async def test_task_tags() -> None:
-    dinglepop_mock = AsyncMock()
-    dinglepop = task("plumbus", "dinglepop")(dinglepop_mock)()
+    take_dinglebop_mock, take_dinglebop = mock_task("plumbus", "dinglebop")
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task("plumbus", "schleem")
 
-    schleem_mock = AsyncMock()
-    schleem = task("plumbus", "schleem")(schleem_mock)()
+    async def _run(*tags: list[str]) -> None:
+        take_dinglebop_mock.reset_mock()
+        smooth_dinglebop_mock.reset_mock()
 
-    # check adding several times the same task does nothing
-    await Task.run([dinglepop, schleem], [["dinglepop"]])
+        await Task.run([take_dinglebop(), smooth_dinglebop()], list(tags))
 
-    dinglepop_mock.assert_awaited_once()
-    schleem_mock.assert_not_awaited()
+    await _run(["dinglebop"])
 
-    dinglepop_mock.reset_mock()
-    schleem_mock.reset_mock()
-    await Task.run([dinglepop, schleem], [["plumbus"]])
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_not_awaited()
 
-    dinglepop_mock.assert_awaited_once()
-    schleem_mock.assert_awaited_once()
+    await _run(["plumbus"])
 
-    dinglepop_mock.reset_mock()
-    schleem_mock.reset_mock()
-    await Task.run(
-        [dinglepop, schleem], [["plumbus", "dinglepop"], ["plumbus", "schleem"]]
-    )
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_awaited_once()
 
-    dinglepop_mock.assert_awaited_once()
-    schleem_mock.assert_awaited_once()
+    await _run(["plumbus", "dinglebop"], ["plumbus", "schleem"])
 
-    dinglepop_mock.reset_mock()
-    schleem_mock.reset_mock()
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_awaited_once()
 
-    await Task.run([dinglepop, schleem], [["schleem", "dinglepop"]])
-    dinglepop_mock.assert_not_awaited()
-    schleem_mock.assert_not_awaited()
+    await _run(["schleem", "dinglebop"])
+
+    take_dinglebop_mock.assert_not_awaited()
+    smooth_dinglebop_mock.assert_not_awaited()
 
 
 async def test_task_scope_tags() -> None:
-    dinglepop_mock = AsyncMock()
+    dinglebop_mock = AsyncMock()
     with Task.tags("plumbus"):
-        dinglepop = task()(dinglepop_mock)()
+        dinglebop = task()(dinglebop_mock)()
 
-    await Task.run([dinglepop], [["plumbus"]])
+    await Task.run([dinglebop], [["plumbus"]])
 
-    dinglepop_mock.assert_awaited_once()
-    dinglepop_mock.reset_mock()
+    dinglebop_mock.assert_awaited_once()
+    dinglebop_mock.reset_mock()
 
-    await Task.run([dinglepop], [["schleem"]])
+    await Task.run([dinglebop], [["schleem"]])
 
-    dinglepop_mock.assert_not_awaited()
+    dinglebop_mock.assert_not_awaited()
 
 
 async def test_skip_task() -> None:
-    dinglepop_mock = AsyncMock()
-    dinglepop = task("dinglepop")(dinglepop_mock)
+    take_dinglebop_mock, take_dinglebop = mock_task("dinglebop")
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task("schleem")
+    push_dinglebop_mock, push_dinglebop = mock_task("grumbo")
 
-    schleem_mock = AsyncMock()
-    schleem = task("schleem")(schleem_mock)
+    async def _run(*tags: list[str]) -> None:
+        take_dinglebop_mock.reset_mock()
+        smooth_dinglebop_mock.reset_mock()
+        push_dinglebop_mock.reset_mock()
 
-    grumbo_mock = AsyncMock()
-    grumbo = task("grumbo")(grumbo_mock)
+        await Task.run(
+            [take_dinglebop() | smooth_dinglebop() | push_dinglebop()], list(tags)
+        )
 
-    switch_task = dinglepop() | schleem() | grumbo()
+    await _run()
 
-    await Task.run([switch_task])
+    take_dinglebop_mock.assert_awaited_once()
+    smooth_dinglebop_mock.assert_not_awaited()
+    push_dinglebop_mock.assert_not_awaited()
 
-    dinglepop_mock.assert_awaited_once()
-    schleem_mock.assert_not_awaited()
-    grumbo_mock.assert_not_awaited()
+    await _run(["schleem"])
 
-    dinglepop_mock.reset_mock()
-    schleem_mock.reset_mock()
-    grumbo_mock.reset_mock()
-    await Task.run([switch_task], [["schleem"]])
+    take_dinglebop_mock.assert_not_awaited()
+    smooth_dinglebop_mock.assert_awaited_once()
+    push_dinglebop_mock.assert_not_awaited()
 
-    dinglepop_mock.assert_not_awaited()
-    schleem_mock.assert_awaited_once()
-    grumbo_mock.assert_not_awaited()
+    await _run(["no-match"])
 
-    dinglepop_mock.reset_mock()
-    schleem_mock.reset_mock()
-    grumbo_mock.reset_mock()
-    await Task.run([switch_task], [["no-match"]])
-
-    dinglepop_mock.assert_not_awaited()
-    schleem_mock.assert_not_awaited()
-    grumbo_mock.assert_not_awaited()
+    take_dinglebop_mock.assert_not_awaited()
+    smooth_dinglebop_mock.assert_not_awaited()
+    push_dinglebop_mock.assert_not_awaited()
