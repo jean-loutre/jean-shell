@@ -39,7 +39,13 @@ async def test_line_stream() -> None:
         await stream.write(b"Yodel\nDee doo")
         assert lines == ["YodelYodel"]
 
-    assert lines == ["YodelYodel", "Dee doo"]
+        await stream.write(b"\nDah\n")
+        assert lines == ["YodelYodel", "Dee doo", "Dah"]
+
+        await stream.write(b"Dih")
+        assert lines == ["YodelYodel", "Dee doo", "Dah"]
+
+    assert lines == ["YodelYodel", "Dee doo", "Dah", "Dih"]
 
 
 async def test_log_stream() -> None:
