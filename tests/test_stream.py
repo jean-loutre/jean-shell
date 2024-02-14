@@ -1,4 +1,14 @@
-from jiac import MemoryStream, LineStream, LogStream, multiplex, pipe, Stream
+from jiac import (
+    MemoryStream,
+    LineStream,
+    LogStream,
+    multiplex,
+    NullStream,
+    pipe,
+    Stream,
+    stream_to,
+    copy_stream,
+)
 from logging import INFO
 from asyncio import timeout, gather, sleep
 from unittest.mock import Mock, AsyncMock
@@ -86,3 +96,28 @@ async def test_pipe_stream() -> None:
             assert await out.read(64) == b"Wubba lubba"
 
         await gather(_write(in_), _read())
+
+
+async def test_stream_to() -> None:
+    assert isinstance(stream_to(None), NullStream)
+
+    stream: Stream = MemoryStream()
+    assert stream_to(stream) == stream
+
+    content = bytearray()
+    stream = stream_to(content)
+
+    assert stream is not None
+    await stream.write(b"Wubba lubba")
+
+    assert content == b"Wubba lubba"
+
+
+async def test_copy_stream() -> None:
+    source_writer, source = pipe()
+    destination = MemoryStream()
+
+    await source_writer.write(b"Wubba lubba")
+    await source_writer.close()
+    await copy_stream(source, destination, 4)
+    assert destination.buffer == b"Wubba lubba"

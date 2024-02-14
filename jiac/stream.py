@@ -61,7 +61,7 @@ class InputStream(ABC):
         """
 
 
-class NullStream:
+class NullStream(Stream):
     """No-op stream.
 
     This class can be used where a stream is expected, but nothing has to be
@@ -75,7 +75,7 @@ class NullStream:
         ...
 
 
-class MemoryStream:
+class MemoryStream(Stream):
     """Stream implementation writing to a bytarray"""
 
     def __init__(self, buffer: bytearray | None = None) -> None:
@@ -255,3 +255,46 @@ def pipe() -> tuple[Stream, InputStream]:
     return _PipeStream(buffer, data_available, closed), _PipeInputStream(
         buffer, data_available, closed
     )
+
+
+Streamable = bytearray | Stream | None
+
+
+def stream_to(streamable: Streamable) -> Stream:
+    """Wraps an object in a stream.
+
+    Return a stream that wraps various python types:
+      * If streamable is None, return None
+      * If streamable is already a Stream, return it
+      * If streamable is a bytearray, return a MemoryStream that writes into the given bytearray
+
+    Args:
+        streamable : The object to convert to a stream.
+
+    Returns:
+        A stream that encapsulates the given streamable.
+    """
+    if streamable is None:
+        return NullStream()
+    if isinstance(streamable, Stream):
+        return streamable
+    if isinstance(streamable, bytearray):
+        return MemoryStream(streamable)
+
+    raise NotImplementedError()
+
+
+async def copy_stream(in_: InputStream, out: Stream, buffer_size: int = 1024) -> None:
+    """Copy a stream to another.
+
+    Args:
+        in_ : Input stream
+        out: Output stream
+        buffer_size: size of chunks used when reading from source and writing
+                     to destination.
+    """
+    while True:
+        buffer = await in_.read(buffer_size)
+        await out.write(buffer)
+        if len(buffer) < buffer_size:
+            return
