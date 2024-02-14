@@ -11,7 +11,6 @@ from typing import (
     Any,
     Iterable,
     Generic,
-    Coroutine,
     Awaitable,
     Callable,
     TypeVar,
@@ -52,16 +51,19 @@ class Task(Generic[T]):
 
     def __init__(
         self,
-        closure: "_Closure[T]",
+        function: "ExecuteTask[T]",
+        args: list[Any],
+        kwargs: dict[str, Any],
         explicit_dependencies: list["Task[Any]"] | None = None,
+        tags: frozenset[str] | None = None,
+        skip: "Task[T] | None" = None,
     ) -> None:
-        self._closure = closure
+        self._function = function
+        self._args = list(args)
+        self._kwargs = dict(kwargs)
         self._explicit_dependencies = explicit_dependencies or []
-        self._tags = set(Task._scope_tags)
-        self._result: T | _Unset = _Unset()
-        self._ready = Event()
-        self._done = Event()
-        self._dependent_tasks_done: set[Event] = set()
+        self._tags = tags or frozenset(Task._scope_tags)
+        self._skip = skip
 
     @staticmethod
     async def run(
@@ -82,15 +84,14 @@ class Task(Generic[T]):
             tasks: An iterable of Tasks of any type.
             tags: An iterable of tag set.
         """
-        scheduled_tasks: set[Task[Any]] = set()
+        scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
         tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
-        tasks_coroutines = chain.from_iterable(
-            task._schedule(scheduled_tasks, tag_sets) for task in tasks
-        )
+        for task in tasks:
+            task._schedule(scheduled_tasks, tag_sets)
 
         async with TaskGroup() as group:
-            for task_coroutine in tasks_coroutines:
-                group.create_task(task_coroutine)
+            for scheduled_task in scheduled_tasks.values():
+                group.create_task(scheduled_task.run())
 
     @staticmethod
     @contextmanager
@@ -128,7 +129,12 @@ class Task(Generic[T]):
         Args:
             task: The task to execute after self.
         """
-        return Task(task._closure, task._explicit_dependencies + [self])
+        return Task(
+            task._function,
+            task._args,
+            task._kwargs,
+            task._explicit_dependencies + [self],
+        )
 
     def along_with(self, task: "Task[U]") -> "Task[None]":
         """Execute given task in parallel .
@@ -159,59 +165,94 @@ class Task(Generic[T]):
 
         return Noop(explicit_dependencies)
 
+    def skip_with(self, task: "Task[T]") -> "Task[T]":
+        """Set the "skip task" for this task.
+
+        If a task is a dependency of a selected task, but is not itself
+        selected while running a task graph, and it has a skip tag set, the
+        skip task will be executed instead of the regular function. This allow
+        providing an alternate way to provide a needed value, when the full
+        task is not itself wanted.
+
+        You can use the | operator to achieve the same result.
+
+        Args:
+            task: Task to execute instead of self if self is not selected for
+                  execution but it's value is needed by a selected task.
+
+        Return:
+            self, for chaining calls
+        """
+        if self._skip is None:
+            return Task(
+                self._function,
+                self._args,
+                self._kwargs,
+                self._explicit_dependencies,
+                self._tags,
+                task,
+            )
+        return Task(
+            self._function,
+            self._args,
+            self._kwargs,
+            self._explicit_dependencies,
+            self._tags,
+            self._skip | task,
+        )
+        self._skip = task
+        return self
+
     def __and__(self, task: "Task[U]") -> "Task[U]":
         return self.then(task)
 
     def __floordiv__(self, task: "Task[U]") -> "Task[None]":
         return self.along_with(task)
 
+    def __or__(self, task: "Task[T]") -> "Task[T]":
+        return self.skip_with(task)
+
     def _schedule(
         self,
-        scheduled_tasks: set["Task[Any]"],
+        scheduled_tasks: "dict[Task[Any], _ScheduledTask[Any]]",
         tag_sets: set[frozenset[str]],
-        force_schedule: bool = False,
-    ) -> Iterable[Coroutine[Any, Any, None]]:
-        if self in scheduled_tasks or not (
-            force_schedule
-            or len(tag_sets) == 0
-            or any(tags & self._tags == tags for tags in tag_sets)
-        ):
+        force: bool = False,
+    ) -> None:
+        if self in scheduled_tasks:
             return
 
-        yield self._run(self._closure)
-        scheduled_tasks.add(self)
+        task_selected = len(tag_sets) == 0 or any(
+            tags & self._tags == tags for tags in tag_sets
+        )
 
-        for task in chain(self._closure.dependencies, self._explicit_dependencies):
-            task._dependent_tasks_done.add(self._done)
-            yield from task._schedule(scheduled_tasks, tag_sets, True)
+        if not task_selected and self._skip is not None:
+            self._skip._schedule(scheduled_tasks, tag_sets)
+        elif task_selected or force:
 
-    async def _run(self, closure: "_Closure[T]") -> None:
-        async with TaskGroup() as group:
-            for explicit_dependency in self._explicit_dependencies:
-                group.create_task(explicit_dependency._wait_result())
+            def _schedule(dependency: Any) -> Any:
+                if isinstance(dependency, Task):
+                    dependency._schedule(scheduled_tasks, tag_sets, True)
 
-        task_return = await closure.start()
+            for dependency in chain(
+                self._explicit_dependencies,
+                self._args,
+                self._kwargs.values(),
+            ):
+                _schedule(dependency)
 
-        if isinstance(task_return, AbstractAsyncContextManager):
-            self._result = await task_return.__aenter__()
-        else:
-            self._result = await task_return
+            def _scheduled(arg: Any) -> Any:
+                if isinstance(arg, Task):
+                    return scheduled_tasks[arg]
+                return arg
 
-        self._ready.set()
+            scheduled_task = _ScheduledTask(
+                self._function,
+                [_scheduled(it) for it in self._args],
+                {key: _scheduled(value) for key, value in self._kwargs.items()},
+                [scheduled_tasks[dep] for dep in self._explicit_dependencies],
+            )
 
-        async with TaskGroup() as group:
-            for event in self._dependent_tasks_done:
-                group.create_task(event.wait())
-
-        if isinstance(task_return, AbstractAsyncContextManager):
-            await task_return.__aexit__(None, None, None)
-
-        self._done.set()
-
-    async def _wait_result(self) -> T:
-        await self._ready.wait()
-        assert not isinstance(self._result, _Unset)
-        return self._result
+            scheduled_tasks[self] = scheduled_task
 
 
 async def _noop() -> None:
@@ -220,7 +261,7 @@ async def _noop() -> None:
 
 class Noop(Task[None]):
     def __init__(self, explicit_dependencies: list["Task[Any]"] | None = None) -> None:
-        super().__init__(_Closure(_noop), explicit_dependencies)
+        super().__init__(_noop, [], {}, explicit_dependencies)
 
 
 # @desc Type of function that can be wrapped in tasks.
@@ -251,37 +292,68 @@ def task(
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
             with Task.tags(*tags):
-                return Task(_Closure(func, *args, **kwargs))
+                return Task(func, list(args), dict(kwargs))
 
         return _wrapper
 
     return _decorate
 
 
-class _Closure(Generic[T]):
+class _ScheduledTask(Generic[T]):
     def __init__(
         self,
         function: ExecuteTask[T],
-        *args: list[Any],
-        **kwargs: dict[str, Any],
+        args: list[Any],
+        kwargs: dict[str, Any],
+        explicit_dependencies: list["_ScheduledTask[Any]"],
     ) -> None:
         self._function = function
-        self._args = list(args)
-        self._kwargs = dict(kwargs)
+        self._explicit_dependencies = explicit_dependencies
+        self._args = args
+        self._kwargs = kwargs
+        self._result: T | _Unset = _Unset()
+        self._ready = Event()
+        self._done = Event()
+        self._dependent_tasks_done: list[Event] = []
+        self._ready = Event()
+        self._done = Event()
 
-    @property
-    def dependencies(self) -> Iterable["Task[Any]"]:
-        for arg in chain(self._args, self._kwargs.values()):
-            if isinstance(arg, Task):
-                yield arg
+        for arg in chain(args, kwargs.values()):
+            if isinstance(arg, _ScheduledTask):
+                arg._dependent_tasks_done.append(self._done)
 
-    async def start(self) -> Awaitable[T] | AsyncContextManager[T]:
+    async def run(self) -> None:
+        async with TaskGroup() as group:
+            for explicit_dependency in self._explicit_dependencies:
+                group.create_task(explicit_dependency._wait_result())
+
         async def _load_arg(arg: Any) -> Any:
-            if isinstance(arg, Task):
+            if isinstance(arg, _ScheduledTask):
                 return await arg._wait_result()
             return arg
 
         args = list([await _load_arg(arg) for arg in self._args])
         kwargs = {key: await _load_arg(arg) for key, arg in self._kwargs.items()}
 
-        return self._function(*args, **kwargs)
+        task_return = self._function(*args, **kwargs)
+
+        if isinstance(task_return, AbstractAsyncContextManager):
+            self._result = await task_return.__aenter__()
+        else:
+            self._result = await task_return
+
+        self._ready.set()
+
+        async with TaskGroup() as group:
+            for event in self._dependent_tasks_done:
+                group.create_task(event.wait())
+
+        if isinstance(task_return, AbstractAsyncContextManager):
+            await task_return.__aexit__(None, None, None)
+
+        self._done.set()
+
+    async def _wait_result(self) -> T:
+        await self._ready.wait()
+        assert not isinstance(self._result, _Unset)
+        return self._result

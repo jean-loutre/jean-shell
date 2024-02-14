@@ -145,3 +145,40 @@ async def test_task_scope_tags() -> None:
     await Task.run([dinglepop], [["schleem"]])
 
     dinglepop_mock.assert_not_awaited()
+
+
+async def test_skip_task() -> None:
+    dinglepop_mock = AsyncMock()
+    dinglepop = task("dinglepop")(dinglepop_mock)
+
+    schleem_mock = AsyncMock()
+    schleem = task("schleem")(schleem_mock)
+
+    grumbo_mock = AsyncMock()
+    grumbo = task("grumbo")(grumbo_mock)
+
+    switch_task = dinglepop() | schleem() | grumbo()
+
+    await Task.run([switch_task])
+
+    dinglepop_mock.assert_awaited_once()
+    schleem_mock.assert_not_awaited()
+    grumbo_mock.assert_not_awaited()
+
+    dinglepop_mock.reset_mock()
+    schleem_mock.reset_mock()
+    grumbo_mock.reset_mock()
+    await Task.run([switch_task], [["schleem"]])
+
+    dinglepop_mock.assert_not_awaited()
+    schleem_mock.assert_awaited_once()
+    grumbo_mock.assert_not_awaited()
+
+    dinglepop_mock.reset_mock()
+    schleem_mock.reset_mock()
+    grumbo_mock.reset_mock()
+    await Task.run([switch_task], [["no-match"]])
+
+    dinglepop_mock.assert_not_awaited()
+    schleem_mock.assert_not_awaited()
+    grumbo_mock.assert_not_awaited()
