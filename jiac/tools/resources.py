@@ -9,8 +9,8 @@ from importlib.resources.abc import Traversable
 
 
 class _ResourcesFile(File):
-    def __init__(self, resource: Traversable) -> None:
-        super().__init__()
+    def __init__(self, resource: Traversable, **kwargs: str | None) -> None:
+        super().__init__(**kwargs)
         self._resource = resource
 
     @asynccontextmanager
@@ -52,7 +52,9 @@ def _load_file(roots: list[Traversable], file: SourceFile) -> File:
         elif not resource_file.is_file():
             continue
 
-        return _ResourcesFile(resource_file)
+        return _ResourcesFile(
+            resource_file, user=file.user, group=file.group, mode=file.mode
+        )
 
     raise FileNotFoundError(file.path)
 
@@ -64,9 +66,18 @@ def _load_directory(
         source_directory = root / directory.path
         for child in _recursive_list(source_directory):
             if child.is_file():
-                item: File | Directory = _ResourcesFile(child)
+                item: File | Directory = _ResourcesFile(
+                    child,
+                    user=directory.user,
+                    group=directory.group,
+                    mode=directory.file_mode,
+                )
             else:
-                item = Directory()
+                item = Directory(
+                    user=directory.user,
+                    group=directory.group,
+                    mode=directory.directory_mode,
+                )
             child_target_path = relpath(str(child), str(source_directory))
             yield child_target_path, item
 

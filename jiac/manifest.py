@@ -15,15 +15,27 @@ class SourceFile:
     """Item of a manifest representing a file with a source."""
 
     path: str
+    user: str | None = None
+    group: str | None = None
+    mode: str | None = None
 
 
 @dataclass(frozen=True)
 class SourceDirectory:
     path: str
+    user: str | None = None
+    group: str | None = None
+    file_mode: str | None = None
+    directory_mode: str | None = None
 
 
+@dataclass(frozen=True)
 class File(ABC):
     """Item of a manifest representing a file with binary content."""
+
+    user: str | None = None
+    group: str | None = None
+    mode: str | None = None
 
     @abstractmethod
     def open(self) -> AsyncContextManager[InputStream]:
@@ -33,3 +45,7 @@ class File(ABC):
 @dataclass(frozen=True)
 class Directory:
     """Item of a manifest representing a directory with binary content."""
+
+    user: str | None = None
+    group: str | None = None
+    mode: str | None = None
