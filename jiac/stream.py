@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 from asyncio import gather, Event
 from logging import Logger, DEBUG
-from typing import Self
+from typing import Self, IO
 from types import TracebackType
 
 
@@ -301,3 +301,11 @@ async def copy_stream(in_: InputStream, out: Stream, buffer_size: int = 1024) ->
         await out.write(buffer)
         if len(buffer) < buffer_size:
             return
+
+
+class FileInputStream(InputStream):
+    def __init__(self, file: IO[bytes]) -> None:
+        self._file = file
+
+    async def read(self, n: int = -1) -> bytes:
+        return self._file.read(n)

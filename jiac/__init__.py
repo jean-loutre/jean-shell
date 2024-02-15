@@ -1,5 +1,6 @@
 from .stream import (
     Stream,
+    FileInputStream,
     InputStream,
     NullStream,
     pipe,
@@ -28,6 +29,7 @@ from .task import task, Task
 
 __all__ = [
     "FROM_STDERR",
+    "FileInputStream",
     "InputStream",
     "LineStream",
     "LogLevel",
@@ -35,8 +37,8 @@ __all__ = [
     "MemoryStream",
     "NullStream",
     "Process",
-    "Shell",
     "ProcessFailedError",
+    "Shell",
     "Stderr",
     "Stdout",
     "Stream",
