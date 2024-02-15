@@ -20,7 +20,15 @@ class _MockFile(File):
 
 async def test_posix_write_manifest() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
-        yield check_process("sh", expected_stdin="mkdir -p /etc/otters || true\n")
+        yield check_process(
+            "sh",
+            expected_stdin=("rm -fr /etc/otters/orson-welles\n"),
+        )
+        yield check_process(
+            "sh",
+            expected_stdin=("mkdir -p /etc/otters || true\n" "find /etc/otters\n"),
+            stdout=b"/etc/otters/orson-welles\n/etc/otters/peter\n",
+        )
         yield check_process("cat > /etc/otters/peter", expected_stdin="peter")
         yield check_process("cat > /etc/otters/steven", expected_stdin="steven")
         # fmt: off
@@ -45,7 +53,7 @@ async def test_posix_write_manifest() -> None:
                     ("/etc", Directory()),
                     (
                         "/etc/otters",
-                        Directory(user="peter", group="otters", mode="755"),
+                        Directory(user="peter", group="otters", mode="755", clean=True),
                     ),
                     ("/etc/otters/peter", _MockFile("peter")),
                     (
