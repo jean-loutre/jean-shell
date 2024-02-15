@@ -6,10 +6,11 @@ shell and common system to handle stdin, stderr and stdout, piping between
 commands, to a file, to a logging.Logger...
 """
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Iterable
 from asyncio import gather, Event
 from logging import Logger, DEBUG
-from typing import Self, IO
+from typing import Self, IO, Awaitable, Callable
 from types import TracebackType
 
 
@@ -116,10 +117,10 @@ class LineStream(Stream):
             lines.pop()
 
         for line in lines:
-            self.write_line(line)
+            await self.write_line(line)
 
     @abstractmethod
-    def write_line(self, line: str) -> None:
+    async def write_line(self, line: str) -> None:
         """Method called each time a full line is written to stream.
 
         Args:
@@ -128,7 +129,32 @@ class LineStream(Stream):
 
     async def close(self) -> None:
         if self._pending_line:
-            self.write_line(self._pending_line)
+            await self.write_line(self._pending_line)
+
+
+def line_stream(func: Callable[[str], Awaitable[None]]) -> Callable[[], LineStream]:
+    """Wrap a function into a LineStream
+
+    Will turn a function accepting a string as argument into a function
+    returning a LineStream, which will call the wrapped function with each line
+    that is written to it.
+
+    Args:
+        func: The function to wrap.
+
+    Returns:
+        The wrapped function, returning a LineStream.
+    """
+
+    class _Stream(LineStream):
+        async def write_line(self, line: str) -> None:
+            await func(line)
+
+    @wraps(func)
+    def _wrapper() -> LineStream:
+        return _Stream()
+
+    return _wrapper
 
 
 class LogStream(LineStream):
@@ -148,7 +174,7 @@ class LogStream(LineStream):
         self._logger = logger
         self._level = level
 
-    def write_line(self, line: str) -> None:
+    async def write_line(self, line: str) -> None:
         self._logger.log(self._level, line)
 
 

@@ -5,6 +5,7 @@ from jiac import (
     multiplex,
     NullStream,
     pipe,
+    line_stream,
     Stream,
     stream_to,
     copy_stream,
@@ -27,9 +28,10 @@ async def test_memory_stream() -> None:
 
 async def test_line_stream() -> None:
     lines: list[str] = []
+    stream: LineStream
 
     class _TestLineStream(LineStream):
-        def write_line(self, line: str) -> None:
+        async def write_line(self, line: str) -> None:
             lines.append(line)
 
     async with _TestLineStream() as stream:
@@ -46,6 +48,12 @@ async def test_line_stream() -> None:
         assert lines == ["YodelYodel", "Dee doo", "Dah"]
 
     assert lines == ["YodelYodel", "Dee doo", "Dah", "Dih"]
+
+    mock = AsyncMock()
+    async with line_stream(mock)() as stream:
+        await stream.write(b"Youpi\n")
+
+    mock.assert_awaited_once_with("Youpi")
 
 
 async def test_log_stream() -> None:

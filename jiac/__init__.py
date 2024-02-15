@@ -1,6 +1,7 @@
 from .stream import (
     Stream,
     FileInputStream,
+    line_stream,
     InputStream,
     NullStream,
     pipe,
@@ -46,6 +47,7 @@ __all__ = [
     "command",
     "copy_stream",
     "echo",
+    "line_stream",
     "multiplex",
     "pipe",
     "redirect",

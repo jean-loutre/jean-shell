@@ -228,7 +228,7 @@ class _TailStream(LineStream):
     def tail(self) -> Iterable[str]:
         return self._tail
 
-    def write_line(self, line: str) -> None:
+    async def write_line(self, line: str) -> None:
         self._tail.append(line)
 
 
