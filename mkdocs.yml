@@ -3,7 +3,9 @@ site_url: https://jean-iac.collectivit.org
 site_dir: .build/docs
 nav:
     - Home: index.md
-    - ...
+    - Core Concepts: core-concepts/
+    - Systems: systems/
+    - Api Reference: api/
 
 repo_url: https://git.collectivit.org/collectivit/jean-iac
 edit_uri: ""
