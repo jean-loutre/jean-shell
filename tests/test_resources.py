@@ -2,7 +2,7 @@ from pytest import raises
 from typing import Any
 
 from jiac.manifest import File, SourceFile, Directory, SourceDirectory
-from jiac.tools.resources import resources_manifest
+from jiac.resources import resources_manifest
 
 
 async def check_manifest(
@@ -35,8 +35,8 @@ async def test_resource_manifest_file() -> None:
             ),
             "/steven": SourceFile("steven"),
         },
-        "tests.tools.test_resources_data.child",
-        "tests.tools.test_resources_data.base",
+        "tests.test_resources_data.child",
+        "tests.test_resources_data.base",
     )
 
     def _file(content: str) -> dict[str, Any]:
@@ -59,13 +59,13 @@ async def test_resource_manifest_file() -> None:
     with raises(FileNotFoundError):
         resources_manifest(
             {"/base_file": SourceFile("do-not-exists")},
-            "tests.tools.test_resources_data.base",
+            "tests.test_resources_data.base",
         )
 
     with raises(IsADirectoryError):
         resources_manifest(
             {"/base_file": SourceFile("base")},
-            "tests.tools.test_resources_data",
+            "tests.test_resources_data",
         )
 
 
@@ -80,8 +80,8 @@ async def test_resource_manifest_directory() -> None:
                 directory_mode="777",
             )
         },
-        "tests.tools.test_resources_data.child",
-        "tests.tools.test_resources_data.base",
+        "tests.test_resources_data.child",
+        "tests.test_resources_data.base",
     )
 
     def _dir() -> dict[str, Any]:
