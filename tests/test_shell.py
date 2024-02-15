@@ -250,3 +250,13 @@ async def test_logger_redirection() -> None:
 
         await (echo("Peter\nSteven") >> LogStream(logger, level=INFO))
         mock.assert_has_calls([call(INFO, "Peter"), call(INFO, "Steven")])
+
+
+async def test_write_stdin() -> None:
+    stdout = bytearray()
+    sh = MockShell()
+    async with (sh("anyway") >> stdout).write_stdin() as stdin:
+        assert stdin is not None
+        await stdin.write(b"Yodeldidoo")
+
+    assert stdout == b"Yodeldidoo"

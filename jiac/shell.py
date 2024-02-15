@@ -17,14 +17,14 @@ and stderr :
 from abc import ABC, abstractmethod
 from asyncio import gather
 from collections import deque
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from functools import wraps
 from logging import Logger, addLevelName, INFO, DEBUG
-from types import TracebackType
 from typing import (
     Awaitable,
     Callable,
     AsyncContextManager,
+    AsyncIterator,
     Concatenate,
     Final,
     Generator,
@@ -93,16 +93,8 @@ class Command:
         result._out = multiplex(self._out, stream_to(target))
         return result
 
-    async def __aenter__(self) -> tuple[Stdin, Awaitable[int]]:
-        return await Pipe([self]).__aenter__()
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        pass
+    def write_stdin(self) -> AsyncContextManager[Stdin]:
+        return Pipe([self]).write_stdin()
 
     async def start(self, out: Stdout, err: Stderr) -> Process:
         out = multiplex(out, self._out)
@@ -165,12 +157,22 @@ class Pipe:
 
     def __await__(self) -> Generator[None, None, int]:
         async def _run() -> int:
-            async with self as (_, wait):
-                return await wait
+            _, wait = await self._start()
+            return await wait
 
         return _run().__await__()
 
-    async def __aenter__(self) -> tuple[Stdin, Awaitable[int]]:
+    @asynccontextmanager
+    async def write_stdin(self) -> AsyncIterator[Stdin]:
+        stdin, wait = await self._start()
+        try:
+            yield stdin
+        finally:
+            if stdin:
+                await stdin.close()
+            await wait
+
+    async def _start(self) -> tuple[Stdin, Awaitable[int]]:
         out = None
         err = None
         processes = []
@@ -183,14 +185,6 @@ class Pipe:
             return results[-1]
 
         return out, _run()
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        pass
 
 
 class ProcessFailedError(Exception):
