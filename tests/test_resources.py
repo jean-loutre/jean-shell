@@ -23,6 +23,7 @@ async def check_manifest(
             assert item.user == value.get("user", None)
             assert item.group == value.get("group", None)
             assert item.mode == value.get("mode", None)
+            assert item.clean == value.get("clean", False)
         else:
             assert False
 
@@ -78,14 +79,21 @@ async def test_resource_manifest_directory() -> None:
                 group="otters",
                 file_mode="666",
                 directory_mode="777",
+                clean=True,
             )
         },
         "tests.test_resources_data.child",
         "tests.test_resources_data.base",
     )
 
-    def _dir() -> dict[str, Any]:
-        return {"type": "dir", "user": "peter", "group": "otters", "mode": "777"}
+    def _dir(clean: bool = False) -> dict[str, Any]:
+        return {
+            "type": "dir",
+            "user": "peter",
+            "group": "otters",
+            "mode": "777",
+            "clean": clean,
+        }
 
     def _file(content: str) -> dict[str, Any]:
         return {
@@ -99,7 +107,7 @@ async def test_resource_manifest_directory() -> None:
     await check_manifest(
         manifest,
         {
-            "/target": _dir(),
+            "/target": _dir(clean=True),
             "/target/peter": _file("peter content from child\n"),
             "/target/child_dir": _dir(),
             "/target/child_dir/peter": _file("peter content\n"),

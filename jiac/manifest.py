@@ -27,6 +27,7 @@ class SourceDirectory:
     group: str | None = None
     file_mode: str | None = None
     directory_mode: str | None = None
+    clean: bool = False
 
 
 @dataclass(frozen=True)
@@ -49,3 +50,4 @@ class Directory:
     user: str | None = None
     group: str | None = None
     mode: str | None = None
+    clean: bool = False

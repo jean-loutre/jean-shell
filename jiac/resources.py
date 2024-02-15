@@ -65,6 +65,7 @@ def _load_directory(
     for root in reversed(roots):
         source_directory = root / directory.path
         for child in _recursive_list(source_directory):
+            child_target_path = relpath(str(child), str(source_directory))
             if child.is_file():
                 item: File | Directory = _ResourcesFile(
                     child,
@@ -73,12 +74,14 @@ def _load_directory(
                     mode=directory.file_mode,
                 )
             else:
+                # Only clean topmost directory
+                clean = child_target_path == "." and directory.clean
                 item = Directory(
                     user=directory.user,
                     group=directory.group,
                     mode=directory.directory_mode,
+                    clean=clean,
                 )
-            child_target_path = relpath(str(child), str(source_directory))
             yield child_target_path, item
 
 
