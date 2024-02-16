@@ -17,16 +17,19 @@ from .shell import (
     FROM_STDERR,
     LogLevel,
     Process,
-    Shell,
     ProcessFailedError,
+    Shell,
     Stderr,
     Stdout,
+    cat,
     command,
     echo,
     redirect,
 )
 
-from .task import task, Task
+from .task import task, Task, Noop
+
+from .manifest import SourceFile, SourceDirectory
 
 __all__ = [
     "FROM_STDERR",
@@ -36,14 +39,18 @@ __all__ = [
     "LogLevel",
     "LogStream",
     "MemoryStream",
+    "Noop",
     "NullStream",
     "Process",
     "ProcessFailedError",
     "Shell",
+    "SourceDirectory",
+    "SourceFile",
     "Stderr",
     "Stdout",
     "Stream",
     "Task",
+    "cat",
     "command",
     "copy_stream",
     "echo",
