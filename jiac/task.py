@@ -238,7 +238,10 @@ class Task(Generic[T]):
         )
 
         if not task_selected and self._skip is not None:
-            self._skip._schedule(scheduled_tasks, tag_sets)
+            self._skip._schedule(scheduled_tasks, tag_sets, force)
+            skip_task = scheduled_tasks.get(self._skip, None)
+            if skip_task is not None:
+                scheduled_tasks[self] = scheduled_tasks[self._skip]
             return
 
         def _schedule(dependency: Any) -> Any:
