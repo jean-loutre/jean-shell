@@ -2,7 +2,7 @@ from logging import Logger
 from typing import Any
 from json import loads
 
-from jiac.shell import Process, Shell, Stderr, Stdout
+from jtoto.shell import Process, Shell, Stderr, Stdout
 
 
 class IncusCli(Shell):

@@ -3,8 +3,8 @@ from re import Pattern
 from types import TracebackType
 from typing import Any, AsyncIterator, Callable, Coroutine, Iterable
 
-from jiac.shell import Process, Shell, Stderr, Stdout
-from jiac.stream import Stream
+from jtoto.shell import Process, Shell, Stderr, Stdout
+from jtoto.stream import Stream
 
 
 class MockStdin(Stream):

@@ -5,8 +5,8 @@ from subprocess import PIPE
 from typing import Iterator
 from unittest.mock import AsyncMock, patch
 
-from jiac.shell import FROM_STDERR, FROM_STDOUT, echo, redirect
-from jiac.systems.local import LocalShell
+from jtoto.shell import FROM_STDERR, FROM_STDOUT, echo, redirect
+from jtoto.systems.local import LocalShell
 
 
 class _StreamWriterMock:
@@ -89,7 +89,7 @@ def mock_create_process(
         return process_mock
 
     with patch(
-        "jiac.systems.local.create_subprocess_shell",
+        "jtoto.systems.local.create_subprocess_shell",
         return_value=process_mock,
         autospec=True,
     ) as mock:

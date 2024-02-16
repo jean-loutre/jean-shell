@@ -2,15 +2,15 @@ from logging import Logger
 from typing import Any, Type, TypeVar, cast, Awaitable, Callable
 
 from json import dumps
-from jiac.shell import Shell, echo
-from jiac.task import task
-from jiac.systems.incus.cli import IncusCli
-from jiac.systems.incus.instance import Instance
-from jiac.systems.incus.network import Network
-from jiac.systems.incus.object import Object
-from jiac.systems.incus.profile import Profile
-from jiac.systems.incus.project import Project
-from jiac.systems.incus.storage import Storage
+from jtoto.shell import Shell, echo
+from jtoto.task import task
+from jtoto.systems.incus.cli import IncusCli
+from jtoto.systems.incus.instance import Instance
+from jtoto.systems.incus.network import Network
+from jtoto.systems.incus.object import Object
+from jtoto.systems.incus.profile import Profile
+from jtoto.systems.incus.project import Project
+from jtoto.systems.incus.storage import Storage
 
 TObject = TypeVar("TObject", bound="Object")
 

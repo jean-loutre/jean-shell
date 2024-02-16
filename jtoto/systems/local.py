@@ -2,8 +2,8 @@ from asyncio import StreamReader, StreamWriter, create_subprocess_shell, create_
 from logging import Logger
 from subprocess import PIPE
 
-from jiac.shell import Process, Shell, Stderr, Stdout
-from jiac.stream import Stream
+from jtoto.shell import Process, Shell, Stderr, Stdout
+from jtoto.stream import Stream
 
 
 class LocalShell(Shell):

@@ -1,10 +1,10 @@
 from typing import AsyncIterator, TypeVar, Protocol, Any, Awaitable, Callable
 from json import loads
 
-from jiac.systems.incus import incus_node, Node
-from jiac.systems.incus import Storage, Network, Instance, Profile, Project
-from jiac.systems.incus.object import Object
-from jiac.testing import MockProcess, check_process, MockShell
+from jtoto.systems.incus import incus_node, Node
+from jtoto.systems.incus import Storage, Network, Instance, Profile, Project
+from jtoto.systems.incus.object import Object
+from jtoto.testing import MockProcess, check_process, MockShell
 from json import dumps
 
 

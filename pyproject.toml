@@ -1,5 +1,5 @@
 [project]
-name = "Jean-IaC"
+name = "jean-toto"
 version = "0.0.1"
 authors = [
   {name = "Jean-Loutre", email ="jean-loutre@collectivit.org"}
@@ -26,11 +26,11 @@ dev = [
 requires = ["setuptools>=45"]
 
 [tool.setuptools.package-data]
-jiac = ["py.typed"]
+jtoto = ["py.typed"]
 
 [tool.mypy]
 strict = true
-files = "jiac/**/*.py,tests/**/*.py,noxfile.py"
+files = "jtoto/**/*.py,tests/**/*.py,noxfile.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

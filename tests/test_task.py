@@ -1,4 +1,4 @@
-from jiac import task, Task
+from jtoto import task, Task
 from asyncio import sleep
 from unittest.mock import AsyncMock
 from typing import AsyncIterator, Any, Callable

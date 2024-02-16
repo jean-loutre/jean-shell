@@ -1,8 +1,8 @@
 from typing import Any, ClassVar, TypeVar
 
-from jiac.shell import Command, echo
+from jtoto.shell import Command, echo
 from json import dumps
-from jiac.systems.incus.cli import IncusCli
+from jtoto.systems.incus.cli import IncusCli
 
 Config = dict[str, Any]
 

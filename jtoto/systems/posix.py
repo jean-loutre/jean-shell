@@ -1,12 +1,12 @@
 """Posix-related implementations :
 
- * [write_manifest](#jiac.systems.posix.write_manifest) : Allow to synchronize
+ * [write_manifest](#jtoto.systems.posix.write_manifest) : Allow to synchronize
  a file manifest to a posix-compliant shell, by using standard posix utilities
  such as mkdir, cat, chown, chrgp and chmod.
 """
-from jiac.shell import Shell, Stdin
-from jiac.stream import copy_stream, line_stream
-from jiac.manifest import File, Directory
+from jtoto.shell import Shell, Stdin
+from jtoto.stream import copy_stream, line_stream
+from jtoto.manifest import File, Directory
 
 
 async def write_manifest(shell: Shell, manifest: dict[str, File | Directory]) -> None:
@@ -16,9 +16,9 @@ async def write_manifest(shell: Shell, manifest: dict[str, File | Directory]) ->
         shell: Shell on which to execute synchronization commands.
         manifest:
             File manifest, either created by hands from objects in the
-            [jiac.manifest](../../manifest) module, or loaded from some source,
+            [jtoto.manifest](../../manifest) module, or loaded from some source,
             for example with the
-            [resources_manifest](../../resources#jiac.resources.resources_manifest)
+            [resources_manifest](../../resources#jtoto.resources.resources_manifest)
             function.
     """
     directories = [

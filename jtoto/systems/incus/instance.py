@@ -1,9 +1,9 @@
 from shlex import quote
 from typing import Any
 
-from jiac.shell import Process, Shell, Stderr, Stdout
-from jiac.systems.incus.cli import IncusCli
-from jiac.systems.incus.object import Object
+from jtoto.shell import Process, Shell, Stderr, Stdout
+from jtoto.systems.incus.cli import IncusCli
+from jtoto.systems.incus.object import Object
 
 
 class Instance(Object):

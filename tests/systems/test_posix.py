@@ -1,11 +1,11 @@
-from jiac.systems.posix import write_manifest
+from jtoto.systems.posix import write_manifest
 from collections import OrderedDict
 from io import BytesIO
-from jiac.manifest import Directory, File
-from jiac.stream import FileInputStream, InputStream
+from jtoto.manifest import Directory, File
+from jtoto.stream import FileInputStream, InputStream
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
-from jiac.testing import MockShell, check_process, MockProcess
+from jtoto.testing import MockShell, check_process, MockProcess
 
 
 class _MockFile(File):

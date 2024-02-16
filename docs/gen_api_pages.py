@@ -6,9 +6,9 @@ import mkdocs_gen_files
 
 nav = mkdocs_gen_files.Nav()
 
-for path in sorted(Path("jiac").rglob("*.py")):
+for path in sorted(Path("jtoto").rglob("*.py")):
     module_path = path.with_suffix("")
-    doc_path = path.relative_to("jiac").with_suffix(".md")
+    doc_path = path.relative_to("jtoto").with_suffix(".md")
     full_doc_path = Path("api", doc_path)
 
     parts = tuple(module_path.parts)

@@ -4,8 +4,8 @@ from jinja2 import Environment, BaseLoader, PackageLoader, PrefixLoader, ChoiceL
 from contextlib import asynccontextmanager
 from io import BytesIO
 from dataclasses import dataclass, field
-from jiac.manifest import SourceFile, File
-from jiac.stream import FileInputStream, InputStream
+from jtoto.manifest import SourceFile, File
+from jtoto.stream import FileInputStream, InputStream
 
 
 @dataclass(frozen=True)

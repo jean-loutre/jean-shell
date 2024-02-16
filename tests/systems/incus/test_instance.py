@@ -1,9 +1,9 @@
 from typing import AsyncIterator
 
 from json import loads
-from jiac.systems.incus import Instance
-from jiac.systems.incus.cli import IncusCli
-from jiac.testing import MockProcess, MockShell, check_process
+from jtoto.systems.incus import Instance
+from jtoto.systems.incus.cli import IncusCli
+from jtoto.testing import MockProcess, MockShell, check_process
 
 
 async def test_start_stop() -> None:

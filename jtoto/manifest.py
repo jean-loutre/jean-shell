@@ -5,7 +5,7 @@ directories, their permissions and their content to synchronize them to various
 destination.
 """
 from dataclasses import dataclass
-from jiac import InputStream
+from jtoto import InputStream
 from abc import ABC, abstractmethod
 from typing import AsyncContextManager
 

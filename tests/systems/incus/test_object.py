@@ -2,9 +2,9 @@ from typing import AsyncIterator, Any, Callable
 from json import loads, dumps
 from unittest.mock import AsyncMock
 
-from jiac.systems.incus.cli import IncusCli
-from jiac.systems.incus.object import Object
-from jiac.testing import MockProcess, MockShell, check_process
+from jtoto.systems.incus.cli import IncusCli
+from jtoto.systems.incus.object import Object
+from jtoto.testing import MockProcess, MockShell, check_process
 
 
 def _check_json_stdin(expected_object: Any) -> Callable[[bytes], None]:

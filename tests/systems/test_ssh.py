@@ -3,11 +3,11 @@ from unittest.mock import ANY, AsyncMock, patch
 
 from asyncssh import SSHClientConnectionOptions
 
-from jiac.shell import Stderr, Stdout
-from jiac.systems.ssh import ssh_shell
+from jtoto.shell import Stderr, Stdout
+from jtoto.systems.ssh import ssh_shell
 
 
-@patch("jiac.systems.ssh.connect")
+@patch("jtoto.systems.ssh.connect")
 async def test_connect(connect_mock: AsyncMock) -> None:
     async with ssh_shell(host="otters.org", username="gilbert"):
         pass
@@ -24,7 +24,7 @@ async def test_connect(connect_mock: AsyncMock) -> None:
     assert options.username == "gilbert"
 
 
-@patch("jiac.systems.ssh.connect")
+@patch("jtoto.systems.ssh.connect")
 async def test_run(connect_mock: AsyncMock) -> None:
     async with ssh_shell("otters.org", username="gilbert") as sh:
 

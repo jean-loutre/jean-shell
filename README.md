@@ -1,3 +1,3 @@
-# Jean-IaC
+# Jean-Toto
 
-Jean-IaC is a Lightweight "infrastructure as code" Python framework.
+Jean-Toto is a Lightweight IT task autotomation framework

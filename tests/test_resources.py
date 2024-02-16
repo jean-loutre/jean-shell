@@ -1,8 +1,8 @@
 from pytest import raises
 from typing import Any
 
-from jiac.manifest import File, SourceFile, Directory, SourceDirectory
-from jiac.resources import resources_manifest
+from jtoto.manifest import File, SourceFile, Directory, SourceDirectory
+from jtoto.resources import resources_manifest
 
 
 async def check_manifest(

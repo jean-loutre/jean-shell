@@ -33,7 +33,7 @@ from typing import (
     ParamSpec,
 )
 
-from jiac.stream import (
+from jtoto.stream import (
     LineStream,
     LogStream,
     Stream,
@@ -66,14 +66,14 @@ class Command:
     """A not-yet executed command.
 
     This class isn't indended to be constructed directly, but get as the result
-    of functions decorated by the jiac.command decorator, or returned by
-    jiac.Shell implementations.
+    of functions decorated by the jtoto.command decorator, or returned by
+    jtoto.Shell implementations.
 
-    This is a factory of jiac.shell.Process : each time a command is awaited,
+    This is a factory of jtoto.shell.Process : each time a command is awaited,
     it starts a new process. It can also be pipe in a command or an existing
-    jiac.shell.Pipe, to create a jiac.Pipe.
+    jtoto.shell.Pipe, to create a jtoto.Pipe.
 
-    Supports redirection to a jiac.Stream through >> operator, which will
+    Supports redirection to a jtoto.Stream through >> operator, which will
     redirect the standard output of the command to the given stream :
     """
 
@@ -137,10 +137,10 @@ def command(
 
 
 class Pipe:
-    """A pipe of jiac.Command ready to be executed.
+    """A pipe of jtoto.Command ready to be executed.
 
     This class isn't indended to be constructed directly, but is the result of
-    piping jiac.Commands together through the use of the | operator.
+    piping jtoto.Commands together through the use of the | operator.
 
     Pipes can be piped together to be combined, and awaited to be executed. The
     result of awaiting a pipe is the return code of the last command of the
@@ -259,7 +259,7 @@ class Shell(ABC):
     nested sudo shell...
 
     Shells can be called with a string command, returning an instance of
-    jiac.Command that can either be piped to another command, or awaited to
+    jtoto.Command that can either be piped to another command, or awaited to
     execute it.
     """
 
@@ -276,7 +276,7 @@ class Shell(ABC):
                 will be logged on the given logger with the LogLevel.STDOUT
                 level, stderr with LogLevel.STDERR.
 
-                This argument can be overriden locally by the jiac.Shell.log
+                This argument can be overriden locally by the jtoto.Shell.log
                 context manager.
 
             raise_on_error:
@@ -284,7 +284,7 @@ class Shell(ABC):
                 raise a ProcessFailedError.
 
                 This parameter can be locally overriden by using
-                jiac.Shell.raise_on_error context manager, or by setting the
+                jtoto.Shell.raise_on_error context manager, or by setting the
                 raise_on_error parameter when calling this shell to create a
                 command.
         """
@@ -303,8 +303,8 @@ class Shell(ABC):
                 command.
 
         Returns:
-            A jiac.Command instance ready to be executed by awaiting it, or to
-            be piped to other commands, to create a jiac.Pipe.
+            A jtoto.Command instance ready to be executed by awaiting it, or to
+            be piped to other commands, to create a jtoto.Pipe.
         """
 
         async def _start(out: Stdout, err: Stderr) -> Process:
@@ -480,7 +480,7 @@ async def cat(
     """Write a stream to standard output.
 
     Args:
-        stream: A jiac.InputStream to write to stdout.
+        stream: A jtoto.InputStream to write to stdout.
 
     Returns:
         A command that, will forward the standard output of the previous

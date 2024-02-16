@@ -1,7 +1,7 @@
 from typing import Any
 
-from jiac.manifest import File
-from jiac.template import template_manifest, Template
+from jtoto.manifest import File
+from jtoto.template import template_manifest, Template
 
 
 async def check_manifest(

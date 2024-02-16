@@ -1,4 +1,4 @@
-from jiac.systems.incus.object import Object
+from jtoto.systems.incus.object import Object
 
 
 class Profile(Object):

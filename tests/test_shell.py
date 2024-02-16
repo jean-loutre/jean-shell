@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock, call, patch
 
 from pytest import raises
 
-from jiac import (
+from jtoto import (
     FROM_STDERR,
     LogLevel,
     Process,

@@ -1,5 +1,5 @@
-site_name: Jean-IaC
-site_url: https://jean-iac.collectivit.org
+site_name: jean-toto
+site_url: https://jean-toto.collectivit.org
 site_dir: .build/docs
 nav:
     - Home: index.md
@@ -7,7 +7,7 @@ nav:
     - Systems: systems/
     - Api Reference: api/
 
-repo_url: https://git.collectivit.org/collectivit/jean-iac
+repo_url: https://git.collectivit.org/collectivit/jean-toto
 edit_uri: ""
 markdown_extensions:
   - admonition

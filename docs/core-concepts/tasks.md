@@ -1,6 +1,6 @@
 # Tasks
 
-Jean-IaC provide a way to declare directed acyclic graph of tasks.
+Jean-Toto provide a way to declare directed acyclic graph of tasks.
 
 ```
 @task

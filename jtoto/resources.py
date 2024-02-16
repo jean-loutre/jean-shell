@@ -1,7 +1,7 @@
 """Utilities to deal with python package resources."""
-from jiac.manifest import File, SourceFile, Directory, SourceDirectory
+from jtoto.manifest import File, SourceFile, Directory, SourceDirectory
 from contextlib import asynccontextmanager
-from jiac import FileInputStream, InputStream
+from jtoto import FileInputStream, InputStream
 from os.path import relpath, join, normpath
 from typing import AsyncIterator, Iterable, Iterator
 from importlib.resources import Package, files
