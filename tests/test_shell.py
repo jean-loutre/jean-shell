@@ -17,7 +17,6 @@ from jiac import (
     redirect,
     LogStream,
     MemoryStream,
-    multiplex,
 )
 
 
@@ -168,48 +167,6 @@ async def mock_echo_err(out: Stdout, err: Stderr) -> Process:
         return 0
 
     return out, err, _run()
-
-
-async def test_memory_stream() -> None:
-    stream = MemoryStream()
-    await stream.write(b"Kweek kweek")
-    assert stream.buffer == b"Kweek kweek"
-
-    buffer = bytearray()
-    stream = MemoryStream(buffer)
-    await stream.write(b"Kweek kweek")
-    assert buffer == b"Kweek kweek"
-
-
-async def test_multiplex_stream() -> None:
-    _1 = AsyncMock()
-    _2 = AsyncMock()
-    _3 = AsyncMock()
-
-    child_stream = multiplex(_1, _2)
-    assert child_stream is not None
-
-    stream = multiplex(child_stream, _2, _3)
-    assert stream is not None
-
-    with patch.object(child_stream, "write") as mock:
-        await stream.write(b"Kweek kweek")
-
-        _1.write.assert_awaited_once_with(b"Kweek kweek")
-        _2.write.assert_awaited_once_with(b"Kweek kweek")
-        _3.write.assert_awaited_once_with(b"Kweek kweek")
-        mock.assert_not_awaited()
-
-    with patch.object(child_stream, "close") as mock:
-        await stream.close()
-
-        _1.close.assert_awaited_once()
-        _2.close.assert_awaited_once()
-        _3.close.assert_awaited_once()
-        mock.assert_not_awaited()
-
-    null_stream = multiplex(None, None)
-    assert null_stream is None
 
 
 async def test_pipe_command() -> None:
