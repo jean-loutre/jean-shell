@@ -115,3 +115,35 @@ async def test_resource_manifest_directory() -> None:
             "/target/base_dir/peter": _file("peter content\n"),
         },
     )
+
+
+async def test_resource_manifest_directory_no_source() -> None:
+    manifest = resources_manifest(
+        {
+            "/target": SourceDirectory(
+                user="peter",
+                group="otters",
+                file_mode="666",
+                directory_mode="777",
+                clean=True,
+            )
+        },
+        "tests.test_resources_data.child",
+        "tests.test_resources_data.base",
+    )
+
+    def _dir(clean: bool = False) -> dict[str, Any]:
+        return {
+            "type": "dir",
+            "user": "peter",
+            "group": "otters",
+            "mode": "777",
+            "clean": clean,
+        }
+
+    await check_manifest(
+        manifest,
+        {
+            "/target": _dir(clean=True),
+        },
+    )

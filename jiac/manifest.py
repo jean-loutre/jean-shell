@@ -22,7 +22,7 @@ class SourceFile:
 
 @dataclass(frozen=True)
 class SourceDirectory:
-    path: str
+    path: str | None = None
     user: str | None = None
     group: str | None = None
     file_mode: str | None = None

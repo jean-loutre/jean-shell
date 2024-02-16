@@ -62,6 +62,17 @@ def _load_file(roots: list[Traversable], file: SourceFile) -> File:
 def _load_directory(
     roots: list[Traversable], directory: SourceDirectory
 ) -> Iterator[tuple[str, File | Directory]]:
+    if directory.path is None:
+        yield (
+            ".",
+            Directory(
+                user=directory.user,
+                group=directory.group,
+                mode=directory.directory_mode,
+                clean=directory.clean,
+            ),
+        )
+        return
     for root in reversed(roots):
         source_directory = root / directory.path
         for child in _recursive_list(source_directory):
