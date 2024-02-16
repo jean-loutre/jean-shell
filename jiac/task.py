@@ -10,6 +10,8 @@ Task.run(...), giving it leaf tasks to execute.
 from typing import (
     Any,
     Iterable,
+    cast,
+    Generator,
     Generic,
     Awaitable,
     Callable,
@@ -65,6 +67,13 @@ class Task(Generic[T]):
         self._tags = tags or frozenset(Task._scope_tags)
         self._skip = skip
 
+    def __await__(self) -> Generator[None, None, T]:
+        async def _run() -> T:
+            result_dict = await self._run()
+            return cast(T, result_dict[self]._result)
+
+        return _run().__await__()
+
     async def run(self, *tags: Iterable[str]) -> None:
         """Run the given tasks.
 
@@ -81,13 +90,7 @@ class Task(Generic[T]):
             tasks: An iterable of Tasks of any type.
             tags: An iterable of tag set.
         """
-        scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
-        tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
-        self._schedule(scheduled_tasks, tag_sets)
-
-        async with TaskGroup() as group:
-            for scheduled_task in scheduled_tasks.values():
-                group.create_task(scheduled_task.run())
+        await self._run(*tags)
 
     @staticmethod
     @contextmanager
@@ -207,6 +210,19 @@ class Task(Generic[T]):
 
     def __or__(self, task: "Task[T]") -> "Task[T]":
         return self.skip_with(task)
+
+    async def _run(
+        self, *tags: Iterable[str]
+    ) -> dict["Task[Any]", "_ScheduledTask[Any]"]:
+        scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
+        tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
+        self._schedule(scheduled_tasks, tag_sets)
+
+        async with TaskGroup() as group:
+            for scheduled_task in scheduled_tasks.values():
+                group.create_task(scheduled_task.run())
+
+        return scheduled_tasks
 
     def _schedule(
         self,

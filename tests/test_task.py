@@ -177,3 +177,11 @@ async def test_skip_task() -> None:
     take_dinglebop_mock.assert_not_awaited()
     smooth_dinglebop_mock.assert_not_awaited()
     push_dinglebop_mock.assert_not_awaited()
+
+
+async def test_await_task() -> None:
+    take_dinglebop_mock, take_dinglebop = mock_task(
+        "dinglebop", return_value="dinglebop"
+    )
+
+    assert await take_dinglebop() == "dinglebop"
