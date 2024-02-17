@@ -133,6 +133,7 @@ class Task(Generic[T]):
             task._args,
             task._kwargs,
             task._explicit_dependencies + [self],
+            task._tags,
         )
 
     def along_with(self, task: "Task[U]") -> "Task[None]":
