@@ -229,48 +229,42 @@ class Task(Generic[T]):
         scheduled_tasks: "dict[Task[Any], _ScheduledTask[Any]]",
         tag_sets: set[frozenset[str]],
         force: bool = False,
-    ) -> None:
+    ) -> "_ScheduledTask[T]":
         if self in scheduled_tasks:
-            return
+            return scheduled_tasks[self]
 
         task_selected = len(tag_sets) == 0 or any(
             tags & self._tags == tags for tags in tag_sets
         )
 
         if not task_selected and self._skip is not None:
-            self._skip._schedule(scheduled_tasks, tag_sets, force)
-            skip_task = scheduled_tasks.get(self._skip, None)
-            if skip_task is not None:
-                scheduled_tasks[self] = scheduled_tasks[self._skip]
-            return
-
-        def _schedule(dependency: Any) -> Any:
-            if isinstance(dependency, Task):
-                dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
-
-        for dependency in chain(
-            self._explicit_dependencies,
-            self._args,
-            self._kwargs.values(),
-        ):
-            _schedule(dependency)
+            return self._skip._schedule(scheduled_tasks, tag_sets, force)
 
         def _scheduled(arg: Any) -> Any:
             if isinstance(arg, Task):
-                return scheduled_tasks[arg]
+                return arg._schedule(scheduled_tasks, tag_sets, task_selected or force)
             return arg
 
+        scheduled_args = [_scheduled(it) for it in self._args]
+        scheduled_kwargs = {
+            key: _scheduled(value) for key, value in self._kwargs.items()
+        }
+        scheduled_explicit_dependencies = [
+            _scheduled(dep) for dep in self._explicit_dependencies
+        ]
+
         if not task_selected and not force:
-            return
+            return None
 
         scheduled_task = _ScheduledTask(
             self._function,
-            [_scheduled(it) for it in self._args],
-            {key: _scheduled(value) for key, value in self._kwargs.items()},
-            [scheduled_tasks[dep] for dep in self._explicit_dependencies],
+            scheduled_args,
+            scheduled_kwargs,
+            scheduled_explicit_dependencies,
         )
 
         scheduled_tasks[self] = scheduled_task
+        return scheduled_task
 
 
 async def _noop() -> None:
