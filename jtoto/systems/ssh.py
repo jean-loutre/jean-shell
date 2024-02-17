@@ -18,10 +18,10 @@ from jtoto.stream import Stream
 
 @asynccontextmanager
 async def ssh_shell(
-    host: str, logger: Logger | None = None, **kwargs: Any
+    host: str, port: int = 22, logger: Logger | None = None, **kwargs: Any
 ) -> AsyncIterator[Shell]:
     async with connect(
-        host, options=SSHClientConnectionOptions(**kwargs)
+        host, port=port, options=SSHClientConnectionOptions(**kwargs)
     ) as connection:
         yield _SshShell(connection, logger=logger)
 
