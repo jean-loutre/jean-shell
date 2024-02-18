@@ -53,6 +53,7 @@ class Task(Generic[T]):
 
     def __init__(
         self,
+        description: str,
         function: "ExecuteTask[T]",
         args: list[Any],
         kwargs: dict[str, Any],
@@ -60,6 +61,7 @@ class Task(Generic[T]):
         tags: frozenset[str] | None = None,
         skip: "Task[T] | None" = None,
     ) -> None:
+        self._description = description
         self._function = function
         self._args = list(args)
         self._kwargs = dict(kwargs)
@@ -129,6 +131,7 @@ class Task(Generic[T]):
             task: The task to execute after self.
         """
         return Task(
+            task._description,
             task._function,
             task._args,
             task._kwargs,
@@ -185,6 +188,7 @@ class Task(Generic[T]):
         """
         if self._skip is None:
             return Task(
+                self._description,
                 self._function,
                 self._args,
                 self._kwargs,
@@ -193,6 +197,7 @@ class Task(Generic[T]):
                 task,
             )
         return Task(
+            self._description,
             self._function,
             self._args,
             self._kwargs,
@@ -258,6 +263,7 @@ class Task(Generic[T]):
             return None
 
         scheduled_task = _ScheduledTask(
+            self._description,
             self._function,
             scheduled_args,
             scheduled_kwargs,
@@ -274,7 +280,7 @@ async def _noop() -> None:
 
 class Noop(Task[None]):
     def __init__(self, explicit_dependencies: list["Task[Any]"] | None = None) -> None:
-        super().__init__(_noop, [], {}, explicit_dependencies)
+        super().__init__("noop", _noop, [], {}, explicit_dependencies)
 
 
 # @desc Type of function that can be wrapped in tasks.
@@ -282,7 +288,8 @@ ExecuteTask = Callable[..., Awaitable[T] | AsyncContextManager[T]]
 
 
 def task(
-    *tags: str,
+    description: str | None = None,
+    tags: Iterable[str] | None = None,
 ) -> Callable[
     [Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]
 ]:
@@ -304,8 +311,13 @@ def task(
     def _decorate(func: "ExecuteTask[T]") -> Callable[..., Task[T]]:
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            with Task.tags(*tags):
-                return Task(func, list(args), dict(kwargs))
+            if description is not None:
+                expanded_description = description.format(*args, **kwargs)
+            else:
+                expanded_description = func.__name__
+
+            with Task.tags(*(tags or [])):
+                return Task(expanded_description, func, list(args), dict(kwargs))
 
         return _wrapper
 
@@ -315,11 +327,13 @@ def task(
 class _ScheduledTask(Generic[T]):
     def __init__(
         self,
+        description: str,
         function: ExecuteTask[T],
         args: list[Any],
         kwargs: dict[str, Any],
         explicit_dependencies: list["_ScheduledTask[Any]"],
     ) -> None:
+        self._description = description
         self._function = function
         self._explicit_dependencies = explicit_dependencies
         self._args = args

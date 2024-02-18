@@ -1,15 +1,15 @@
 from jtoto import task, Task
 from asyncio import sleep
 from unittest.mock import AsyncMock
-from typing import AsyncIterator, Any, Callable
+from typing import AsyncIterator, Any, Callable, Iterable
 from contextlib import asynccontextmanager
 
 
 def mock_task(
-    *tags: str, return_value: Any = None
+    tags: Iterable[str] | None = None, return_value: Any = None
 ) -> tuple[AsyncMock, Callable[..., Task[Any]]]:
     task_mock = AsyncMock(return_value=return_value)
-    return task_mock, task(*tags)(task_mock)
+    return task_mock, task(tags=tags)(task_mock)
 
 
 async def test_tasks_args_dependencies() -> None:
@@ -103,8 +103,8 @@ async def test_along_with() -> None:
 
 
 async def test_task_tags() -> None:
-    take_dinglebop_mock, take_dinglebop = mock_task("plumbus", "dinglebop")
-    smooth_dinglebop_mock, smooth_dinglebop = mock_task("plumbus", "schleem")
+    take_dinglebop_mock, take_dinglebop = mock_task(tags=["plumbus", "dinglebop"])
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task(tags=["plumbus", "schleem"])
 
     async def _run(*tags: list[str]) -> None:
         take_dinglebop_mock.reset_mock()
@@ -149,9 +149,9 @@ async def test_task_scope_tags() -> None:
 
 
 async def test_skip_task() -> None:
-    take_dinglebop_mock, take_dinglebop = mock_task("dinglebop")
-    smooth_dinglebop_mock, smooth_dinglebop = mock_task("schleem")
-    push_dinglebop_mock, push_dinglebop = mock_task("grumbo")
+    take_dinglebop_mock, take_dinglebop = mock_task(tags=["dinglebop"])
+    smooth_dinglebop_mock, smooth_dinglebop = mock_task(tags=["schleem"])
+    push_dinglebop_mock, push_dinglebop = mock_task(tags=["grumbo"])
 
     async def _run(*tags: list[str]) -> None:
         take_dinglebop_mock.reset_mock()
