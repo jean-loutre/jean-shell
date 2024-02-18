@@ -76,6 +76,14 @@ class Task(Generic[T]):
 
         return _run().__await__()
 
+    @property
+    def dependencies(self) -> Iterable["Task[Any]"]:
+        """Get all the task this tasks depends upon."""
+        for arg in chain(self._args, self._kwargs.values()):
+            if isinstance(arg, Task):
+                yield arg
+        yield from self._explicit_dependencies
+
     async def run(self, *tags: Iterable[str]) -> None:
         """Run the given tasks.
 
@@ -235,7 +243,7 @@ class Task(Generic[T]):
         scheduled_tasks: "dict[Task[Any], _ScheduledTask[Any]]",
         tag_sets: set[frozenset[str]],
         force: bool = False,
-    ) -> "_ScheduledTask[T]":
+    ) -> "_ScheduledTask[T] | None":
         if self in scheduled_tasks:
             return scheduled_tasks[self]
 
@@ -246,21 +254,25 @@ class Task(Generic[T]):
         if not task_selected and self._skip is not None:
             return self._skip._schedule(scheduled_tasks, tag_sets, force)
 
-        def _scheduled(arg: Any) -> Any:
-            if isinstance(arg, Task):
-                return arg._schedule(scheduled_tasks, tag_sets, task_selected or force)
-            return arg
+        for dependency in self.dependencies:
+            dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
 
-        scheduled_args = [_scheduled(it) for it in self._args]
-        scheduled_kwargs = {
-            key: _scheduled(value) for key, value in self._kwargs.items()
-        }
-        scheduled_explicit_dependencies = [
-            _scheduled(dep) for dep in self._explicit_dependencies
-        ]
+        def _scheduled_arg(arg: Any) -> Any:
+            if isinstance(arg, Task):
+                return scheduled_tasks[arg]
+            return arg
 
         if not task_selected and not force:
             return None
+
+        scheduled_args = [_scheduled_arg(it) for it in self._args]
+        scheduled_kwargs = {
+            key: _scheduled_arg(value) for key, value in self._kwargs.items()
+        }
+
+        scheduled_explicit_dependencies = [
+            scheduled_tasks[dep] for dep in self._explicit_dependencies
+        ]
 
         scheduled_task = _ScheduledTask(
             self._description,
