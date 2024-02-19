@@ -170,7 +170,15 @@ class Task(Generic[T]):
         Args:
             task: The task to execute along with.
         """
-        return Join(task, [self])
+        dependencies = [self]
+        if isinstance(self, Join):
+            dependencies = self._explicit_dependencies + [self._args[0]]
+
+        if isinstance(task, Join):
+            dependencies.extend(task._explicit_dependencies)
+            task = task._args[0]
+
+        return Join(task, dependencies)
 
     def skip_with(self, task: "Task[T]") -> "Task[T]":
         """Set the "skip task" for this task.
