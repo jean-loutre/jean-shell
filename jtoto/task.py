@@ -26,7 +26,7 @@ from asyncio import Event, TaskGroup
 from contextlib import AbstractAsyncContextManager, contextmanager
 
 
-T = TypeVar("T", covariant=True)
+T = TypeVar("T")
 U = TypeVar("U", covariant=True)
 P = ParamSpec("P")
 
@@ -53,6 +53,7 @@ class Task(Generic[T]):
 
     def __init__(
         self,
+        description: str,
         function: "ExecuteTask[T]",
         args: list[Any],
         kwargs: dict[str, Any],
@@ -60,6 +61,7 @@ class Task(Generic[T]):
         tags: frozenset[str] | None = None,
         skip: "Task[T] | None" = None,
     ) -> None:
+        self._description = description
         self._function = function
         self._args = list(args)
         self._kwargs = dict(kwargs)
@@ -73,6 +75,14 @@ class Task(Generic[T]):
             return cast(T, result_dict[self]._result)
 
         return _run().__await__()
+
+    @property
+    def dependencies(self) -> Iterable["Task[Any]"]:
+        """Get all the task this tasks depends upon."""
+        for arg in chain(self._args, self._kwargs.values()):
+            if isinstance(arg, Task):
+                yield arg
+        yield from self._explicit_dependencies
 
     async def run(self, *tags: Iterable[str]) -> None:
         """Run the given tasks.
@@ -129,6 +139,7 @@ class Task(Generic[T]):
             task: The task to execute after self.
         """
         return Task(
+            task._description,
             task._function,
             task._args,
             task._kwargs,
@@ -136,34 +147,26 @@ class Task(Generic[T]):
             task._tags,
         )
 
-    def along_with(self, task: "Task[U]") -> "Task[None]":
-        """Execute given task in parallel .
+    def join(self, task: "Task[U]") -> "Task[U]":
+        """Execute self and given task in parallel.
 
         Return a new task, that will execute noting, but will wait for both
-        self and the given task to be finished before being started.
+        self and the given task to be finished before being started, and return
+        value of the given task.
 
         This allow declaring dependencies between tasks that aren't related to
         a task's function's arguments.
 
-        In terms of the task DAG, it adds a new noop node to the graph, and an
+        In terms of the task DAG, it adds a new node to the graph, and an
         edge from self to the created node, and another from task to the
-        created node. If self or the given task are already noops, the task
-        node will be discarded and it's dependencies directly linked to the
-        newly created node.
+        created node.
 
         You can use the // operator to achieve the same result.
 
         Args:
             task: The task to execute along with.
         """
-        explicit_dependencies = []
-        for it in [self, task]:
-            if isinstance(it, Noop):
-                explicit_dependencies.extend(it._explicit_dependencies)
-            else:
-                explicit_dependencies.append(it)
-
-        return Noop(explicit_dependencies)
+        return Join(task, [self])
 
     def skip_with(self, task: "Task[T]") -> "Task[T]":
         """Set the "skip task" for this task.
@@ -185,6 +188,7 @@ class Task(Generic[T]):
         """
         if self._skip is None:
             return Task(
+                self._description,
                 self._function,
                 self._args,
                 self._kwargs,
@@ -193,6 +197,7 @@ class Task(Generic[T]):
                 task,
             )
         return Task(
+            self._description,
             self._function,
             self._args,
             self._kwargs,
@@ -206,8 +211,8 @@ class Task(Generic[T]):
     def __and__(self, task: "Task[U]") -> "Task[U]":
         return self.then(task)
 
-    def __floordiv__(self, task: "Task[U]") -> "Task[None]":
-        return self.along_with(task)
+    def __floordiv__(self, task: "Task[U]") -> "Task[U]":
+        return self.join(task)
 
     def __or__(self, task: "Task[T]") -> "Task[T]":
         return self.skip_with(task)
@@ -230,7 +235,7 @@ class Task(Generic[T]):
         scheduled_tasks: "dict[Task[Any], _ScheduledTask[Any]]",
         tag_sets: set[frozenset[str]],
         force: bool = False,
-    ) -> "_ScheduledTask[T]":
+    ) -> "_ScheduledTask[T] | None":
         if self in scheduled_tasks:
             return scheduled_tasks[self]
 
@@ -241,23 +246,28 @@ class Task(Generic[T]):
         if not task_selected and self._skip is not None:
             return self._skip._schedule(scheduled_tasks, tag_sets, force)
 
-        def _scheduled(arg: Any) -> Any:
-            if isinstance(arg, Task):
-                return arg._schedule(scheduled_tasks, tag_sets, task_selected or force)
-            return arg
+        for dependency in self.dependencies:
+            dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
 
-        scheduled_args = [_scheduled(it) for it in self._args]
-        scheduled_kwargs = {
-            key: _scheduled(value) for key, value in self._kwargs.items()
-        }
-        scheduled_explicit_dependencies = [
-            _scheduled(dep) for dep in self._explicit_dependencies
-        ]
+        def _scheduled_arg(arg: Any) -> Any:
+            if isinstance(arg, Task):
+                return scheduled_tasks[arg]
+            return arg
 
         if not task_selected and not force:
             return None
 
+        scheduled_args = [_scheduled_arg(it) for it in self._args]
+        scheduled_kwargs = {
+            key: _scheduled_arg(value) for key, value in self._kwargs.items()
+        }
+
+        scheduled_explicit_dependencies = [
+            scheduled_tasks[dep] for dep in self._explicit_dependencies
+        ]
+
         scheduled_task = _ScheduledTask(
+            self._description,
             self._function,
             scheduled_args,
             scheduled_kwargs,
@@ -274,7 +284,20 @@ async def _noop() -> None:
 
 class Noop(Task[None]):
     def __init__(self, explicit_dependencies: list["Task[Any]"] | None = None) -> None:
-        super().__init__(_noop, [], {}, explicit_dependencies)
+        super().__init__("noop", _noop, [], {}, explicit_dependencies)
+
+
+async def _join(return_value: T) -> T:
+    return return_value
+
+
+class Join(Task[T]):
+    def __init__(
+        self,
+        return_value: Task[T],
+        explicit_dependencies: list["Task[Any]"] | None = None,
+    ) -> None:
+        super().__init__("", _join, [return_value], {}, explicit_dependencies)
 
 
 # @desc Type of function that can be wrapped in tasks.
@@ -282,7 +305,8 @@ ExecuteTask = Callable[..., Awaitable[T] | AsyncContextManager[T]]
 
 
 def task(
-    *tags: str,
+    description: str | None = None,
+    tags: Iterable[str] | None = None,
 ) -> Callable[
     [Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]
 ]:
@@ -304,8 +328,13 @@ def task(
     def _decorate(func: "ExecuteTask[T]") -> Callable[..., Task[T]]:
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            with Task.tags(*tags):
-                return Task(func, list(args), dict(kwargs))
+            if description is not None:
+                expanded_description = description.format(*args, **kwargs)
+            else:
+                expanded_description = func.__name__
+
+            with Task.tags(*(tags or [])):
+                return Task(expanded_description, func, list(args), dict(kwargs))
 
         return _wrapper
 
@@ -315,11 +344,13 @@ def task(
 class _ScheduledTask(Generic[T]):
     def __init__(
         self,
+        description: str,
         function: ExecuteTask[T],
         args: list[Any],
         kwargs: dict[str, Any],
         explicit_dependencies: list["_ScheduledTask[Any]"],
     ) -> None:
+        self._description = description
         self._function = function
         self._explicit_dependencies = explicit_dependencies
         self._args = args
