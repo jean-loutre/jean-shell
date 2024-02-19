@@ -26,7 +26,7 @@ from asyncio import Event, TaskGroup
 from contextlib import AbstractAsyncContextManager, contextmanager
 
 
-T = TypeVar("T", covariant=True)
+T = TypeVar("T")
 U = TypeVar("U", covariant=True)
 P = ParamSpec("P")
 
@@ -147,34 +147,26 @@ class Task(Generic[T]):
             task._tags,
         )
 
-    def along_with(self, task: "Task[U]") -> "Task[None]":
-        """Execute given task in parallel .
+    def join(self, task: "Task[U]") -> "Task[U]":
+        """Execute self and given task in parallel.
 
         Return a new task, that will execute noting, but will wait for both
-        self and the given task to be finished before being started.
+        self and the given task to be finished before being started, and return
+        value of the given task.
 
         This allow declaring dependencies between tasks that aren't related to
         a task's function's arguments.
 
-        In terms of the task DAG, it adds a new noop node to the graph, and an
+        In terms of the task DAG, it adds a new node to the graph, and an
         edge from self to the created node, and another from task to the
-        created node. If self or the given task are already noops, the task
-        node will be discarded and it's dependencies directly linked to the
-        newly created node.
+        created node.
 
         You can use the // operator to achieve the same result.
 
         Args:
             task: The task to execute along with.
         """
-        explicit_dependencies = []
-        for it in [self, task]:
-            if isinstance(it, Noop):
-                explicit_dependencies.extend(it._explicit_dependencies)
-            else:
-                explicit_dependencies.append(it)
-
-        return Noop(explicit_dependencies)
+        return Join(task, [self])
 
     def skip_with(self, task: "Task[T]") -> "Task[T]":
         """Set the "skip task" for this task.
@@ -219,8 +211,8 @@ class Task(Generic[T]):
     def __and__(self, task: "Task[U]") -> "Task[U]":
         return self.then(task)
 
-    def __floordiv__(self, task: "Task[U]") -> "Task[None]":
-        return self.along_with(task)
+    def __floordiv__(self, task: "Task[U]") -> "Task[U]":
+        return self.join(task)
 
     def __or__(self, task: "Task[T]") -> "Task[T]":
         return self.skip_with(task)
@@ -293,6 +285,19 @@ async def _noop() -> None:
 class Noop(Task[None]):
     def __init__(self, explicit_dependencies: list["Task[Any]"] | None = None) -> None:
         super().__init__("noop", _noop, [], {}, explicit_dependencies)
+
+
+async def _join(return_value: T) -> T:
+    return return_value
+
+
+class Join(Task[T]):
+    def __init__(
+        self,
+        return_value: Task[T],
+        explicit_dependencies: list["Task[Any]"] | None = None,
+    ) -> None:
+        super().__init__("", _join, [return_value], {}, explicit_dependencies)
 
 
 # @desc Type of function that can be wrapped in tasks.

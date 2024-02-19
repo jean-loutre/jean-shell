@@ -79,27 +79,27 @@ async def test_then() -> None:
     assert sequence == ["one", "two"]
 
 
-async def test_along_with() -> None:
-    take_dinglebop_mock, take_dinglebop = mock_task()
+async def test_join() -> None:
+    take_dinglebop_mock, take_dinglebop = mock_task(return_value="dinglepop")
     smooth_dinglebop_mock, smooth_dinglebop = mock_task()
+    rub_dinglebop_mock, rub_dinglebop = mock_task()
 
     # check adding several times the same task does nothing
     take_dinglebop_task = take_dinglebop()
-    await (
-        smooth_dinglebop()
-        .along_with(take_dinglebop_task)
-        .along_with(take_dinglebop_task)
-    ).run()
+    await (smooth_dinglebop().join(take_dinglebop_task).join(take_dinglebop_task)).run()
 
     take_dinglebop_mock.assert_awaited_once()
     smooth_dinglebop_mock.assert_awaited_once()
 
     take_dinglebop_mock.reset_mock()
     smooth_dinglebop_mock.reset_mock()
-    await (take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task).run()
+    await (
+        rub_dinglebop(take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task)
+    ).run()
 
     take_dinglebop_mock.assert_awaited_once()
     smooth_dinglebop_mock.assert_awaited_once()
+    rub_dinglebop_mock.assert_awaited_once_with("dinglepop")
 
 
 async def test_task_tags() -> None:
