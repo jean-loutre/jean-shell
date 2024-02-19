@@ -69,21 +69,6 @@ class Task(Generic[T]):
         self._tags = tags or frozenset(Task._scope_tags)
         self._skip = skip
 
-    def __await__(self) -> Generator[None, None, T]:
-        async def _run() -> T:
-            result_dict = await self._run()
-            return cast(T, result_dict[self]._result)
-
-        return _run().__await__()
-
-    @property
-    def dependencies(self) -> Iterable["Task[Any]"]:
-        """Get all the task this tasks depends upon."""
-        for arg in chain(self._args, self._kwargs.values()):
-            if isinstance(arg, Task):
-                yield arg
-        yield from self._explicit_dependencies
-
     async def run(self, *tags: Iterable[str]) -> None:
         """Run the given tasks.
 
@@ -97,10 +82,29 @@ class Task(Generic[T]):
         tags will be selected.
 
         Args:
-            tasks: An iterable of Tasks of any type.
             tags: An iterable of tag set.
         """
         await self._run(*tags)
+
+    def schedule(self, *tags: Iterable[str]) -> dict["Task[Any]", "ScheduledTask[Any]"]:
+        """
+        Get scheduled tasks for this tag sets.
+
+        Create scheduled tasks for all task graph needed by this task,
+        filtering an skipping tasks according to the given tasks.
+
+        Args:
+            tags: An iterable of tag set.
+
+        Returns:
+            A dict[Task, ScheduledTask] of the tasks scheduled according to the
+            given tags.
+        """
+        scheduled_tasks: dict[Task[Any], ScheduledTask[Any]] = {}
+        tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
+        self._schedule(scheduled_tasks, tag_sets)
+
+        return scheduled_tasks
 
     @staticmethod
     @contextmanager
@@ -217,12 +221,17 @@ class Task(Generic[T]):
     def __or__(self, task: "Task[T]") -> "Task[T]":
         return self.skip_with(task)
 
+    def __await__(self) -> Generator[None, None, T]:
+        async def _run() -> T:
+            result_dict = await self._run()
+            return cast(T, result_dict[self]._result)
+
+        return _run().__await__()
+
     async def _run(
         self, *tags: Iterable[str]
-    ) -> dict["Task[Any]", "_ScheduledTask[Any]"]:
-        scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
-        tag_sets = set(frozenset(tag_set) for tag_set in tags or [])
-        self._schedule(scheduled_tasks, tag_sets)
+    ) -> dict["Task[Any]", "ScheduledTask[Any]"]:
+        scheduled_tasks = self.schedule(*tags)
 
         async with TaskGroup() as group:
             for scheduled_task in scheduled_tasks.values():
@@ -232,10 +241,10 @@ class Task(Generic[T]):
 
     def _schedule(
         self,
-        scheduled_tasks: "dict[Task[Any], _ScheduledTask[Any]]",
+        scheduled_tasks: "dict[Task[Any], ScheduledTask[Any]]",
         tag_sets: set[frozenset[str]],
         force: bool = False,
-    ) -> "_ScheduledTask[T] | None":
+    ) -> "ScheduledTask[T] | None":
         if self in scheduled_tasks:
             return scheduled_tasks[self]
 
@@ -267,12 +276,12 @@ class Task(Generic[T]):
         # If task is selected, it should force child task scheduling
         assert None not in scheduled_explicit_dependencies
 
-        scheduled_task = _ScheduledTask(
+        scheduled_task = ScheduledTask(
             self._description,
             self._function,
             scheduled_args,
             scheduled_kwargs,
-            cast(list[_ScheduledTask[Any]], scheduled_explicit_dependencies),
+            cast(list[ScheduledTask[Any]], scheduled_explicit_dependencies),
         )
 
         scheduled_tasks[self] = scheduled_task
@@ -342,14 +351,14 @@ def task(
     return _decorate
 
 
-class _ScheduledTask(Generic[T]):
+class ScheduledTask(Generic[T]):
     def __init__(
         self,
         description: str,
         function: ExecuteTask[T],
         args: list[Any],
         kwargs: dict[str, Any],
-        explicit_dependencies: list["_ScheduledTask[Any]"],
+        explicit_dependencies: list["ScheduledTask[Any]"],
     ) -> None:
         self._description = description
         self._function = function
@@ -362,7 +371,7 @@ class _ScheduledTask(Generic[T]):
         self._dependent_tasks_done: list[Event] = []
 
         for arg in chain(args, kwargs.values()):
-            if isinstance(arg, _ScheduledTask):
+            if isinstance(arg, ScheduledTask):
                 arg._dependent_tasks_done.append(self._done)
 
     async def run(self) -> None:
@@ -371,7 +380,7 @@ class _ScheduledTask(Generic[T]):
                 group.create_task(explicit_dependency._wait_result())
 
         async def _load_arg(arg: Any) -> Any:
-            if isinstance(arg, _ScheduledTask):
+            if isinstance(arg, ScheduledTask):
                 return await arg._wait_result()
             return arg
 
