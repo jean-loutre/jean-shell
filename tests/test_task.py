@@ -190,7 +190,7 @@ async def test_skip_child_task() -> None:
     smooth_dinglebop_mock, smooth_dinglebop = mock_task(tags=["schleem"])
     push_dinglebop_mock, push_dinglebop = mock_task(tags=["schleem"])
 
-    await push_dinglebop(take_dinglebop() | smooth_dinglebop()).run("schleem")
+    await push_dinglebop(take_dinglebop() | smooth_dinglebop()).run(["schleem"])
 
     take_dinglebop_mock.assert_not_awaited()
     smooth_dinglebop_mock.assert_awaited_once()
