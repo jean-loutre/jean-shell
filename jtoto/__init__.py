@@ -27,7 +27,7 @@ from .shell import (
     redirect,
 )
 
-from .task import task, Task, Noop
+from .task import task, Task, Noop, ScheduledTask
 
 from .manifest import SourceFile, SourceDirectory
 
@@ -43,6 +43,7 @@ __all__ = [
     "NullStream",
     "Process",
     "ProcessFailedError",
+    "ScheduledTask",
     "Shell",
     "SourceDirectory",
     "SourceFile",

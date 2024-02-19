@@ -370,9 +370,16 @@ class ScheduledTask(Generic[T]):
         self._done = Event()
         self._dependent_tasks_done: list[Event] = []
 
-        for arg in chain(args, kwargs.values()):
-            if isinstance(arg, ScheduledTask):
-                arg._dependent_tasks_done.append(self._done)
+        for task in self.dependencies:
+            task._dependent_tasks_done.append(self._done)
+
+    @property
+    def dependencies(self) -> Iterable["ScheduledTask[Any]"]:
+        for item in chain(
+            self._args, self._kwargs.values(), self._explicit_dependencies
+        ):
+            if isinstance(item, ScheduledTask):
+                yield item
 
     async def run(self) -> None:
         async with TaskGroup() as group:
@@ -409,3 +416,6 @@ class ScheduledTask(Generic[T]):
         await self._ready.wait()
         assert not isinstance(self._result, _Unset)
         return self._result
+
+    def __str__(self) -> str:
+        return self._description
