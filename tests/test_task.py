@@ -47,7 +47,7 @@ async def test_async_context_manager_task() -> None:
 async def test_then() -> None:
     sequence = []
 
-    @task()
+    @task(tags=["take"])
     async def take_dinglebop() -> None:
         await sleep(0.1)
         sequence.append("one")
@@ -77,6 +77,12 @@ async def test_then() -> None:
     ).run()
 
     assert sequence == ["one", "two"]
+    sequence.clear()
+
+    await (smooth_dinglebop_task & take_dinglebop_task).run(["take"])
+
+    # take is executed twice, because a new task is created by the & operator.
+    assert sequence == ["one", "two", "one"]
 
 
 async def test_join() -> None:
