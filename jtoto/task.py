@@ -246,32 +246,33 @@ class Task(Generic[T]):
         if not task_selected and self._skip is not None:
             return self._skip._schedule(scheduled_tasks, tag_sets, force)
 
-        for dependency in self.dependencies:
-            dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
-
-        def _scheduled_arg(arg: Any) -> Any:
+        def _schedule_arg(arg: Any) -> Any:
             if isinstance(arg, Task):
-                return scheduled_tasks[arg]
+                return arg._schedule(scheduled_tasks, tag_sets, task_selected or force)
             return arg
+
+        scheduled_args = [_schedule_arg(it) for it in self._args]
+        scheduled_kwargs = {
+            key: _schedule_arg(value) for key, value in self._kwargs.items()
+        }
+
+        scheduled_explicit_dependencies = [
+            dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
+            for dependency in self._explicit_dependencies
+        ]
 
         if not task_selected and not force:
             return None
 
-        scheduled_args = [_scheduled_arg(it) for it in self._args]
-        scheduled_kwargs = {
-            key: _scheduled_arg(value) for key, value in self._kwargs.items()
-        }
-
-        scheduled_explicit_dependencies = [
-            scheduled_tasks[dep] for dep in self._explicit_dependencies
-        ]
+        # If task is selected, it should force child task scheduling
+        assert None not in scheduled_explicit_dependencies
 
         scheduled_task = _ScheduledTask(
             self._description,
             self._function,
             scheduled_args,
             scheduled_kwargs,
-            scheduled_explicit_dependencies,
+            cast(list[_ScheduledTask[Any]], scheduled_explicit_dependencies),
         )
 
         scheduled_tasks[self] = scheduled_task
