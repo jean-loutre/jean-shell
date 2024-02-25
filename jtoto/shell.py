@@ -21,6 +21,7 @@ from contextlib import contextmanager, asynccontextmanager
 from functools import wraps
 from logging import Logger, addLevelName, INFO, DEBUG
 from typing import (
+    overload,
     Awaitable,
     Callable,
     AsyncContextManager,
@@ -38,6 +39,7 @@ from jtoto.stream import (
     LogStream,
     Stream,
     Streamable,
+    MemoryStream,
     multiplex,
     stream_to,
     InputStream,
@@ -95,6 +97,17 @@ class Command:
 
     def write_stdin(self) -> AsyncContextManager[Stdin]:
         return Pipe([self]).write_stdin()
+
+    @overload
+    async def read_stdout(self, encoding: None = None) -> bytes:
+        ...
+
+    @overload
+    async def read_stdout(self, encoding: str) -> str:
+        ...
+
+    async def read_stdout(self, encoding: str | None = None) -> str | bytes:
+        return await Pipe([self]).read_stdout(encoding)
 
     async def start(self, out: Stdout, err: Stderr) -> Process:
         out = multiplex(out, self._out)
@@ -172,8 +185,24 @@ class Pipe:
                 await stdin.close()
             await wait
 
-    async def _start(self) -> tuple[Stdin, Awaitable[int]]:
-        out = None
+    @overload
+    async def read_stdout(self, encoding: None = None) -> bytes:
+        ...
+
+    @overload
+    async def read_stdout(self, encoding: str) -> str:
+        ...
+
+    async def read_stdout(self, encoding: str | None = None) -> str | bytes:
+        out = MemoryStream()
+        _, wait = await self._start(out)
+        await wait
+
+        if encoding is None:
+            return out.buffer
+        return out.buffer.decode(encoding)
+
+    async def _start(self, out: Stream | None = None) -> tuple[Stdin, Awaitable[int]]:
         err = None
         processes = []
         for command in reversed(self._commands):

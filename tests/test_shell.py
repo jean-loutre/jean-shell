@@ -217,3 +217,8 @@ async def test_write_stdin() -> None:
         await stdin.write(b"Yodeldidoo")
 
     assert stdout == b"Yodeldidoo"
+
+
+async def test_read_stdout() -> None:
+    assert await mock_echo().read_stdout() == b"Youpi"
+    assert await mock_echo().read_stdout("utf-8") == "Youpi"
