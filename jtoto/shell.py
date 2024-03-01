@@ -350,7 +350,7 @@ class Shell(ABC):
 
         async def _start(out: Stdout, err: Stderr) -> Process:
             if self._logger:
-                self._logger.debug("Executing %s", command)
+                self._logger.debug("$ %s", command)
                 if out is None and self._logger is not None:
                     out = LogStream(self._logger, level=LogLevel.STDOUT)
                 if (
