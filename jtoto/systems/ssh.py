@@ -12,8 +12,13 @@ from asyncssh import (
 )
 from asyncssh.logging import SSHLogger
 
-from jtoto.shell import Process, Shell, Stderr, Stdout
+from jtoto.shell import Process, Shell, Stderr, Stdout, LogLevel
 from jtoto.stream import Stream
+
+
+class DebugSSHLogger(SSHLogger):
+    def log(self, level: int, msg: object, *args: Any, **kwargs: Any) -> None:
+        super().log(LogLevel.TRACE, msg, *args, **kwargs)
 
 
 @asynccontextmanager
@@ -48,7 +53,7 @@ class _SshShell(Shell):
         self._connection = connection
         if logger:
             ssh_logger = logger.getChild("ssh")
-            self._connection._logger = SSHLogger(parent=ssh_logger)
+            self._connection._logger = DebugSSHLogger(parent=ssh_logger)
 
     async def _start_process(
         self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
