@@ -229,6 +229,9 @@ def multiplex(*streams: Stream | None) -> Stream | None:
     if not children:
         return None
 
+    if len(children) == 1:
+        return next(iter(children))
+
     return _MultiplexStream(*children)
 
 

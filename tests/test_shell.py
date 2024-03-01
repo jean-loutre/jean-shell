@@ -115,22 +115,23 @@ async def test_command_log() -> None:
     logger.log.assert_not_called()
 
 
+class _FailShell(Shell):
+    async def _start_process(
+        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
+    ) -> Process:
+        if err is not None:
+            await err.write(b"Wubba Lubba\n")
+
+        async def _run() -> int:
+            if err is not None:
+                await err.write(b"Dub Dub\n")
+            return 1
+
+        return out, err, _run()
+
+
 async def test_raise_on_error() -> None:
     """Shell should raise an error when a process fails if it's configured to."""
-
-    class _FailShell(Shell):
-        async def _start_process(
-            self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-        ) -> Process:
-            if err is not None:
-                await err.write(b"Wubba Lubba\n")
-
-            async def _run() -> int:
-                if err is not None:
-                    await err.write(b"Dub Dub\n")
-                return 1
-
-            return out, err, _run()
 
     sh = _FailShell(raise_on_error=False)
     await sh("fail")
@@ -147,6 +148,17 @@ async def test_raise_on_error() -> None:
 
     with raises(ProcessFailedError):
         await sh("fail")
+
+
+async def test_log_error_on_fail() -> None:
+    mock_logger = Mock()
+    sh = _FailShell(logger=mock_logger)
+
+    with raises(ProcessFailedError):
+        await sh("fail")
+    mock_logger.log.assert_has_calls(
+        [call(LogLevel.STDERR, "Wubba Lubba"), call(LogLevel.STDERR, "Dub Dub")]
+    )
 
 
 @command

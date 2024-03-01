@@ -272,10 +272,13 @@ async def _raise_on_error(
     async def _run_watch() -> int:
         result = await run
 
+        await stderr_tail.close()
+
         if result != 0:
             raise ProcessFailedError(
                 command_string, result, "\n".join(stderr_tail.tail)
             )
+
         return result
 
     return in_, err, _run_watch()
@@ -341,8 +344,10 @@ class Shell(ABC):
                 self._logger.debug("Executing %s", command)
                 if out is None and self._logger is not None:
                     out = LogStream(self._logger, level=LogLevel.STDOUT)
-                if err is None and self._logger is not None:
-                    err = LogStream(self._logger, level=LogLevel.STDERR)
+                if (
+                    err is None or isinstance(err, _TailStream)
+                ) and self._logger is not None:
+                    err = multiplex(err, LogStream(self._logger, level=LogLevel.STDERR))
 
             return await self._start_process(out, err, command, env=self._env)
 
