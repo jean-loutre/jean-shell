@@ -15,18 +15,20 @@ and stderr :
 ```
 """
 from abc import ABC, abstractmethod
-from asyncio import gather
+from asyncio import shield, TaskGroup
 from collections import deque
 from contextlib import contextmanager, asynccontextmanager
 from functools import wraps
 from logging import Logger, addLevelName, INFO, DEBUG
 from typing import (
+    Any,
     overload,
     Awaitable,
     Callable,
     AsyncContextManager,
     AsyncIterator,
     Concatenate,
+    Coroutine,
     Final,
     Generator,
     Iterable,
@@ -49,7 +51,7 @@ from jtoto.stream import (
 Stdin = Stream | None
 Stdout = Stream | None
 Stderr = Stream | None
-Process = tuple[Stdout, Stderr, Awaitable[int]]
+Process = tuple[Stdout, Stderr, Coroutine[Any, Any, int]]
 StartProcess = Callable[[Stdin, Stderr], Awaitable[Process]]
 
 
@@ -205,13 +207,20 @@ class Pipe:
     async def _start(self, out: Stream | None = None) -> tuple[Stdin, Awaitable[int]]:
         err = None
         processes = []
+
+        async def _shield_process(process: Coroutine[Any, Any, int]) -> int:
+            return await shield(process)
+
         for command in reversed(self._commands):
             out, err, process = await command.start(out, err)
-            processes.append(process)
+            processes.append(_shield_process(process))
 
         async def _run() -> int:
-            results = await gather(*processes)
-            return results[-1]
+            async with TaskGroup() as tg:
+                for process in processes:
+                    last_command = tg.create_task(_shield_process(process))
+
+            return last_command.result()
 
         return out, _run()
 

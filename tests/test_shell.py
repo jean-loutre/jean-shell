@@ -141,13 +141,21 @@ async def test_raise_on_error() -> None:
         ProcessFailedError,
         match=r"fail returned code 1.\nLast stderr output:\nWubba Lubba\nDub Dub",
     ):
-        await sh("fail")
+        try:
+            await sh("fail")
+        except BaseExceptionGroup as ex:
+            assert len(ex.exceptions) == 1
+            raise ex.exceptions[0]
 
     with sh.raise_on_error(False):
         await sh("fail")
 
     with raises(ProcessFailedError):
-        await sh("fail")
+        try:
+            await sh("fail")
+        except BaseExceptionGroup as ex:
+            assert len(ex.exceptions) == 1
+            raise ex.exceptions[0]
 
 
 async def test_log_error_on_fail() -> None:
@@ -155,7 +163,11 @@ async def test_log_error_on_fail() -> None:
     sh = _FailShell(logger=mock_logger)
 
     with raises(ProcessFailedError):
-        await sh("fail")
+        try:
+            await sh("fail")
+        except BaseExceptionGroup as ex:
+            assert len(ex.exceptions) == 1
+            raise ex.exceptions[0]
     mock_logger.log.assert_has_calls(
         [call(LogLevel.STDERR, "Wubba Lubba"), call(LogLevel.STDERR, "Dub Dub")]
     )

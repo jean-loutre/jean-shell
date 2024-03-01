@@ -149,4 +149,4 @@ class MockShell(Shell):
             )
             return await process_task
 
-        return stdin, err, create_task(_run())
+        return stdin, err, _run()
