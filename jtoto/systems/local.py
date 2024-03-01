@@ -8,7 +8,7 @@ from jtoto.stream import Stream
 
 class LocalShell(Shell):
     def __init__(
-        self, logger: Logger | None = None, raise_on_error: bool = False
+        self, logger: Logger | None = None, raise_on_error: bool = True
     ) -> None:
         super().__init__(logger=logger, raise_on_error=raise_on_error)
 
