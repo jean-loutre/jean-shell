@@ -31,8 +31,8 @@ async def test_get_shell() -> None:
         instance_sh = Instance(cli, "peter").get_shell()
         await instance_sh("kweek kweek")
 
-        with instance_sh.env(OTTER_KEY="kw33k kw33k"):
-            await instance_sh("kweek kweek")
+        overlay_sh = instance_sh.overlay(env=dict(OTTER_KEY="kw33k kw33k"))
+        await overlay_sh("kweek kweek")
 
         cli = IncusCli(sh, project="otters")
         instance_sh = Instance(cli, "peter").get_shell()

@@ -49,7 +49,7 @@ class Task(Generic[T]):
     ```
     """
 
-    _scope_tags: list[str] = []
+    _scope_tags: set[str] = set()
 
     def __init__(
         self,
@@ -120,7 +120,7 @@ class Task(Generic[T]):
                    context manager.
         """
         old_tags = Task._scope_tags
-        Task._scope_tags = old_tags + list(tags)
+        Task._scope_tags = old_tags | set(tags)
         yield
         Task._scope_tags = old_tags
 

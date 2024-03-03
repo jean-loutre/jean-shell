@@ -98,17 +98,15 @@ def mock_create_process(
 
 async def test_run() -> None:
     with mock_create_process(return_code=1) as mock:
-        sh = LocalShell()
-        with sh.raise_on_error(False):
-            with sh.env(OTTER_SENSITIVITY="low"):
-                assert (await sh("tickle otter")) == 1
-                mock.assert_awaited_once_with(
-                    "tickle otter",
-                    stdout=PIPE,
-                    stderr=PIPE,
-                    stdin=PIPE,
-                    env={"OTTER_SENSITIVITY": "low"},
-                )
+        sh = LocalShell(raise_on_error=False, env=dict(OTTER_SENSITIVITY="low"))
+        assert (await sh("tickle otter")) == 1
+        mock.assert_awaited_once_with(
+            "tickle otter",
+            stdout=PIPE,
+            stderr=PIPE,
+            stdin=PIPE,
+            env={"OTTER_SENSITIVITY": "low"},
+        )
 
 
 async def test_stdout() -> None:

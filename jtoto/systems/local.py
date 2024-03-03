@@ -1,5 +1,4 @@
 from asyncio import StreamReader, StreamWriter, create_subprocess_shell, create_task
-from logging import Logger
 from subprocess import PIPE
 
 from jtoto.shell import Process, Shell, Stderr, Stdout
@@ -7,11 +6,6 @@ from jtoto.stream import Stream
 
 
 class LocalShell(Shell):
-    def __init__(
-        self, logger: Logger | None = None, raise_on_error: bool = True
-    ) -> None:
-        super().__init__(logger=logger, raise_on_error=raise_on_error)
-
     async def _start_process(
         self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
     ) -> Process:

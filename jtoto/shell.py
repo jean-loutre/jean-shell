@@ -17,7 +17,7 @@ and stderr :
 from abc import ABC, abstractmethod
 from asyncio import shield, TaskGroup
 from collections import deque
-from contextlib import contextmanager, asynccontextmanager
+from contextlib import asynccontextmanager
 from functools import wraps
 from logging import Logger, addLevelName, INFO, DEBUG
 from typing import (
@@ -25,6 +25,7 @@ from typing import (
     overload,
     Awaitable,
     Callable,
+    Mapping,
     AsyncContextManager,
     AsyncIterator,
     Concatenate,
@@ -32,7 +33,6 @@ from typing import (
     Final,
     Generator,
     Iterable,
-    Iterator,
     ParamSpec,
 )
 
@@ -53,6 +53,13 @@ Stdout = Stream | None
 Stderr = Stream | None
 Process = tuple[Stdout, Stderr, Coroutine[Any, Any, int]]
 StartProcess = Callable[[Stdin, Stderr], Awaitable[Process]]
+
+
+class Unset:
+    ...
+
+
+UNSET = Unset()
 
 
 class LogLevel:
@@ -305,7 +312,10 @@ class Shell(ABC):
     """
 
     def __init__(
-        self, logger: Logger | None = None, raise_on_error: bool = True
+        self,
+        logger: Logger | None = None,
+        raise_on_error: bool = True,
+        env: Mapping[str, str] | None = None,
     ) -> None:
         """Initialize the shell.
 
@@ -324,109 +334,132 @@ class Shell(ABC):
                 If true, any command started by this shell that fails will
                 raise a ProcessFailedError.
 
-                This parameter can be locally overriden by using
-                jtoto.Shell.raise_on_error context manager, or by setting the
+                This parameter can be locally overriden by setting the
                 raise_on_error parameter when calling this shell to create a
                 command.
+
+            env:
+                Environment variables to set for every command launched by this
+                shell.
         """
         self._logger = logger
-        self._env: dict[str, str] = {}
         self._raise_on_error = raise_on_error
+        self._env: dict[str, str] = dict(env or {})
 
-    def __call__(self, command: str, raise_on_error: bool | None = None) -> Command:
+    def __call__(
+        self,
+        command: str,
+        log: Logger | None = None,
+        raise_on_error: bool | None = None,
+        env: Mapping[str, str] | None = None,
+    ) -> Command:
         """Create a new command ready to be executed.
 
         Args:
             command: The command to execute with this shell.
 
+            log:
+                Override this shell logger with given parameter for this
+                command only.
+
             raise_on_error:
                 Override the raise_on_error setting set on this shell for this
-                command.
+                command only.
+
+            env:
+                Update this shell environment with given env for this command
+                only.
 
         Returns:
             A jtoto.Command instance ready to be executed by awaiting it, or to
             be piped to other commands, to create a jtoto.Pipe.
         """
+        log = log or self._logger
+        raise_on_error = (
+            raise_on_error if raise_on_error is not None else self._raise_on_error
+        )
+        env = self._env | dict(env or {})
 
         async def _start(out: Stdout, err: Stderr) -> Process:
-            if self._logger:
-                self._logger.debug("$ %s", command)
-                if out is None and self._logger is not None:
-                    out = LogStream(self._logger, level=LogLevel.STDOUT)
+            if log:
+                log.debug("$ %s", command)
+                if out is None and log is not None:
+                    out = LogStream(log, level=LogLevel.STDOUT)
                 if (
                     err is None or isinstance(err, _TailStream)
                 ) and self._logger is not None:
-                    err = multiplex(err, LogStream(self._logger, level=LogLevel.STDERR))
+                    err = multiplex(err, LogStream(log, level=LogLevel.STDERR))
 
-            return await self._start_process(out, err, command, env=self._env)
+            return await self._start_process(out, err, command, env=env)
 
-        if (raise_on_error is None and self._raise_on_error) or raise_on_error:
+        if raise_on_error:
             result = _raise_on_error(_start, command)
         else:
             result = Command(_start)
 
         return result
 
-    @contextmanager
-    def env(self, **kwargs: str) -> Iterator[None]:
-        """Add given keys to the environment in a scope.
-
-        Args:
-            **kwargs: key=value pairs of environment variables to set.
-
-        Returns:
-            A context manager. In the scope of this context manager, any
-            command created by this shell will have the given environment, plus
-            the one defined in the outer scope.
+    def overlay(
+        self,
+        logger: Logger | None | Unset = UNSET,
+        raise_on_error: bool | Unset = UNSET,
+        env: Mapping[str, str] | None | Unset = UNSET,
+    ) -> "Shell":
         """
-        old_env = self._env.copy()
-        for key, value in dict(**kwargs).items():
-            self._env[key] = value
-        yield
-        self._env = old_env
-
-    @contextmanager
-    def log(self, logger: Logger | None) -> Iterator[None]:
-        """Override the shell logger in a scope.
+        Return a new shell that overrides given settings.
 
         Args:
-            logger: logging.Logger to set as this shell's logger in the scope.
+            logger:
+                Override this shell's logger with given logger in the returned
+                overlay shell. See Shell constructor for more information on
+                shell logger.
 
-        Returns:
-            A context manager. In the scope of this context manager, any
-            command created by this shell will log to the given logger, instead
-            of the one eventually passed in the constructor.
-        """
-        old_logger = self._logger
-        self._logger = logger
-        yield
-        self._logger = old_logger
-
-    @contextmanager
-    def raise_on_error(self, raise_on_error: bool) -> Iterator[None]:
-        """Override the shell raise_on_error parameter in a scope.
-
-        Args:
             raise_on_error:
-                Weither to raise ProcessFailedExecption if a command created by
-                this Shell fails, in the scope of the context manager.
+                Override this shell's raise_on_error setting with given
+                parameter in the returned overlay shell. See Shell constructor
+                for more information on raise_on_error parameter.
+
+            env:
+                Update this shell's environment with the given environment in
+                the returned overlay shell.
 
         Returns:
-            A context manager. In the scope of this context manager, any
-            command created by this shell will by default use the given value
-            for it's raise_on_error parameter. Note that this can be overriden
-            per-command when calling the Shell.
+            A new shell instance launching command with this shell and given
+            launch parameters.
         """
-        old_value = self._raise_on_error
-        self._raise_on_error = raise_on_error
-        yield
-        self._raise_on_error = old_value
+        if isinstance(logger, Unset):
+            logger = self._logger
+        if isinstance(raise_on_error, Unset):
+            raise_on_error = self._raise_on_error
+        if isinstance(env, Unset):
+            env = self._env
+
+        return _OverlayShell(
+            self, logger=logger, raise_on_error=raise_on_error, env=env
+        )
 
     @abstractmethod
     async def _start_process(
         self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
     ) -> Process:
         ...
+
+
+class _OverlayShell(Shell):
+    def __init__(
+        self,
+        nested_shell: Shell,
+        logger: Logger | None = None,
+        raise_on_error: bool = True,
+        env: Mapping[str, str] | None = None,
+    ) -> None:
+        super().__init__(logger=logger, raise_on_error=raise_on_error, env=env)
+        self._nested_shell = nested_shell
+
+    async def _start_process(
+        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
+    ) -> Process:
+        return await self._nested_shell._start_process(out, err, command, env)
 
 
 class Redirect:
