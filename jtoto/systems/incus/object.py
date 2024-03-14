@@ -44,9 +44,12 @@ class Object:
     async def load(self) -> None:
         # backup name as it's not returned by show commands, only by list
         name = self.name
-        self._full_config = await self._cli.parse_stdout(
-            f"{self.subcommand} show {self.name}"
+        configs = await self._cli.parse_stdout(
+            f"{self.subcommand} list {self.name} --format json"
         )
+        assert len(configs) == 1
+        self._full_config = configs[0]
+
         self._full_config["name"] = name
         self._remote_full_config = dict(self._full_config)
 

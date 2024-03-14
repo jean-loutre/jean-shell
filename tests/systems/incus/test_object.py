@@ -35,8 +35,8 @@ async def test_set_attr() -> None:
 async def test_load() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
         yield check_process(
-            "incus mock show peter",
-            stdout=dumps({"power": "3W"}),
+            "incus mock list peter --format json",
+            stdout=dumps([{"power": "3W"}]),
         )
 
     async with MockShell(_mock_cli()) as sh:
