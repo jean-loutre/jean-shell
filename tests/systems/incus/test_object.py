@@ -1,5 +1,5 @@
-from typing import AsyncIterator, Any, Callable
-from json import loads, dumps
+from json import dumps, loads
+from typing import Any, AsyncIterator, Callable
 from unittest.mock import AsyncMock
 
 from jtoto.systems.incus.cli import IncusCli

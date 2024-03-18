@@ -1,11 +1,13 @@
 """Utilities to deal with python package resources."""
-from jtoto.manifest import File, SourceFile, Directory, SourceDirectory
+
 from contextlib import asynccontextmanager
-from jtoto import FileInputStream, InputStream
-from os.path import relpath, join, normpath
-from typing import AsyncIterator, Iterable, Iterator
 from importlib.resources import Package, files
 from importlib.resources.abc import Traversable
+from os.path import join, normpath, relpath
+from typing import AsyncIterator, Iterable, Iterator
+
+from jtoto import FileInputStream, InputStream
+from jtoto.manifest import Directory, File, SourceDirectory, SourceFile
 
 
 class _ResourcesFile(File):

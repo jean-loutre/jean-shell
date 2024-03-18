@@ -5,13 +5,13 @@ and InputStream with a single read method. These interface are used by the
 shell and common system to handle stdin, stderr and stdout, piping between
 commands, to a file, to a logging.Logger...
 """
+
 from abc import ABC, abstractmethod
+from asyncio import Event, gather
 from functools import wraps
-from typing import Iterable
-from asyncio import gather, Event
-from logging import Logger, DEBUG
-from typing import Self, IO, Awaitable, Callable
+from logging import DEBUG, Logger
 from types import TracebackType
+from typing import IO, Awaitable, Callable, Iterable, Self
 
 
 class Stream(ABC):

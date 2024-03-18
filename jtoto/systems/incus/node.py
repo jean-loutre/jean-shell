@@ -1,9 +1,8 @@
-from logging import Logger
-from typing import Any, Type, TypeVar, cast, Awaitable, Callable
-
 from json import dumps
+from logging import Logger
+from typing import Any, Awaitable, Callable, Type, TypeVar, cast
+
 from jtoto.shell import Shell, echo
-from jtoto.task import task
 from jtoto.systems.incus.cli import IncusCli
 from jtoto.systems.incus.instance import Instance
 from jtoto.systems.incus.network import Network
@@ -11,6 +10,7 @@ from jtoto.systems.incus.object import Object
 from jtoto.systems.incus.profile import Profile
 from jtoto.systems.incus.project import Project
 from jtoto.systems.incus.storage import Storage
+from jtoto.task import task
 
 TObject = TypeVar("TObject", bound="Object")
 

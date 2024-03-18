@@ -1,12 +1,13 @@
 """Posix-related implementations :
 
- * [write_manifest](#jtoto.systems.posix.write_manifest) : Allow to synchronize
- a file manifest to a posix-compliant shell, by using standard posix utilities
- such as mkdir, cat, chown, chrgp and chmod.
+* [write_manifest](#jtoto.systems.posix.write_manifest) : Allow to synchronize
+a file manifest to a posix-compliant shell, by using standard posix utilities
+such as mkdir, cat, chown, chrgp and chmod.
 """
+
+from jtoto.manifest import Directory, File
 from jtoto.shell import Shell, Stdin
 from jtoto.stream import copy_stream, line_stream
-from jtoto.manifest import File, Directory
 
 
 async def write_manifest(shell: Shell, manifest: dict[str, File | Directory]) -> None:

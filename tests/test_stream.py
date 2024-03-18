@@ -1,18 +1,19 @@
+from asyncio import gather, sleep, timeout
+from logging import INFO
+from unittest.mock import AsyncMock, Mock
+
 from jtoto import (
-    MemoryStream,
     LineStream,
     LogStream,
-    multiplex,
+    MemoryStream,
     NullStream,
-    pipe,
-    line_stream,
     Stream,
-    stream_to,
     copy_stream,
+    line_stream,
+    multiplex,
+    pipe,
+    stream_to,
 )
-from logging import INFO
-from asyncio import timeout, gather, sleep
-from unittest.mock import Mock, AsyncMock
 
 
 async def test_memory_stream() -> None:

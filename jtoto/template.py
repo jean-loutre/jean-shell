@@ -1,10 +1,11 @@
-from typing import Any, AsyncIterator
-from jinja2 import Environment, BaseLoader, PackageLoader, PrefixLoader, ChoiceLoader
-
 from contextlib import asynccontextmanager
-from io import BytesIO
 from dataclasses import dataclass, field
-from jtoto.manifest import SourceFile, File
+from io import BytesIO
+from typing import Any, AsyncIterator
+
+from jinja2 import BaseLoader, ChoiceLoader, Environment, PackageLoader, PrefixLoader
+
+from jtoto.manifest import File, SourceFile
 from jtoto.stream import FileInputStream, InputStream
 
 

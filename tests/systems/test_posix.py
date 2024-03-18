@@ -1,11 +1,12 @@
-from jtoto.systems.posix import write_manifest
 from collections import OrderedDict
+from contextlib import asynccontextmanager
 from io import BytesIO
+from typing import AsyncIterator
+
 from jtoto.manifest import Directory, File
 from jtoto.stream import FileInputStream, InputStream
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-from jtoto.testing import MockShell, check_process, MockProcess
+from jtoto.systems.posix import write_manifest
+from jtoto.testing import MockProcess, MockShell, check_process
 
 
 class _MockFile(File):

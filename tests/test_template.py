@@ -1,7 +1,7 @@
 from typing import Any
 
 from jtoto.manifest import File
-from jtoto.template import template_manifest, Template
+from jtoto.template import Template, template_manifest
 
 
 async def check_manifest(manifest: dict[str, File], expected_manifest: dict[str, Any]) -> None:

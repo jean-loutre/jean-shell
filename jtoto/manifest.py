@@ -4,10 +4,12 @@ This module only defines types that can be used to describe a list of file and
 directories, their permissions and their content to synchronize them to various
 destination.
 """
-from dataclasses import dataclass
-from jtoto import InputStream
+
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import AsyncContextManager
+
+from jtoto.stream import InputStream
 
 
 @dataclass(frozen=True)

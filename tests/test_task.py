@@ -1,7 +1,7 @@
-from typing import Any, AsyncIterator, Callable, Annotated
+from typing import Annotated, Any, AsyncIterator, Callable
 from unittest.mock import AsyncMock
 
-from jtoto import Task, task, run_tasks, Inject
+from jtoto import Inject, Task, run_tasks, task
 
 
 def mock_task(

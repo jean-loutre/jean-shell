@@ -1,4 +1,5 @@
 """Config unit tests."""
+
 from logging import DEBUG, INFO, Logger, getLogger
 from unittest.mock import AsyncMock, Mock, call, patch
 
@@ -7,16 +8,16 @@ from pytest import raises
 from jtoto import (
     FROM_STDERR,
     LogLevel,
+    LogStream,
+    MemoryStream,
     Process,
-    Shell,
     ProcessFailedError,
+    Shell,
     Stderr,
     Stdout,
     command,
     echo,
     redirect,
-    LogStream,
-    MemoryStream,
 )
 
 

@@ -1,6 +1,6 @@
+from json import loads
 from logging import Logger
 from typing import Any
-from json import loads
 
 from jtoto.shell import Process, Shell, Stderr, Stdout
 

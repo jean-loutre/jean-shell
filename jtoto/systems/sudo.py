@@ -1,4 +1,5 @@
 """Shell wrapping all commands in sudo calls."""
+
 from logging import Logger
 from shlex import quote
 

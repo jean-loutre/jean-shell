@@ -14,38 +14,39 @@ and stderr :
  await (ssh_shell("apt-list --installed") >> FileStream("~/remote-packages"))
 ```
 """
+
 from abc import ABC, abstractmethod
-from asyncio import shield, TaskGroup
+from asyncio import TaskGroup, shield
 from collections import deque
 from contextlib import asynccontextmanager
 from functools import wraps
-from logging import Logger, addLevelName, INFO, DEBUG
+from logging import DEBUG, INFO, Logger, addLevelName
 from typing import (
     Any,
-    overload,
-    Awaitable,
-    Callable,
-    Mapping,
     AsyncContextManager,
     AsyncIterator,
+    Awaitable,
+    Callable,
     Concatenate,
     Coroutine,
     Final,
     Generator,
     Iterable,
+    Mapping,
     ParamSpec,
+    overload,
 )
 
 from jtoto.stream import (
+    InputStream,
     LineStream,
     LogStream,
+    MemoryStream,
     Stream,
     Streamable,
-    MemoryStream,
+    copy_stream,
     multiplex,
     stream_to,
-    InputStream,
-    copy_stream,
 )
 
 Stdin = Stream | None

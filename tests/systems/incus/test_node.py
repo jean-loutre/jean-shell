@@ -1,11 +1,9 @@
-from typing import AsyncIterator, TypeVar, Protocol, Any, Awaitable, Callable
-from json import loads
+from json import dumps, loads
+from typing import Any, AsyncIterator, Awaitable, Callable, Protocol, TypeVar
 
-from jtoto.systems.incus import incus_node, Node
-from jtoto.systems.incus import Storage, Network, Instance, Profile, Project
+from jtoto.systems.incus import Instance, Network, Node, Profile, Project, Storage, incus_node
 from jtoto.systems.incus.object import Object
-from jtoto.testing import MockProcess, check_process, MockShell
-from json import dumps
+from jtoto.testing import MockProcess, MockShell, check_process
 
 
 async def test_load_with_project() -> None:

@@ -1,7 +1,7 @@
+from json import dumps
 from typing import Any, ClassVar, TypeVar
 
 from jtoto.shell import Command, echo
-from json import dumps
 from jtoto.systems.incus.cli import IncusCli
 
 Config = dict[str, Any]

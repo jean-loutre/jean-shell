@@ -1,4 +1,5 @@
 """Nox configuration file"""
+
 from typing import Callable
 
 from nox import Session

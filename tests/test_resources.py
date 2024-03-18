@@ -1,7 +1,8 @@
-from pytest import raises
 from typing import Any
 
-from jtoto.manifest import File, SourceFile, Directory, SourceDirectory
+from pytest import raises
+
+from jtoto.manifest import Directory, File, SourceDirectory, SourceFile
 from jtoto.resources import resources_manifest
 
 

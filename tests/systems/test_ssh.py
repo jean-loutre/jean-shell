@@ -1,4 +1,5 @@
 """Config unit tests."""
+
 from unittest.mock import ANY, AsyncMock, patch
 
 from asyncssh import SSHClientConnectionOptions

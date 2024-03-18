@@ -1,7 +1,8 @@
 """Connectors are usable to send commands to a target."""
+
+from contextlib import asynccontextmanager
 from logging import Logger
 from typing import Any, AsyncIterator
-from contextlib import asynccontextmanager
 
 from asyncssh import (
     SSHClientConnection,
@@ -12,7 +13,7 @@ from asyncssh import (
 )
 from asyncssh.logging import SSHLogger
 
-from jtoto.shell import Process, Shell, Stderr, Stdout, LogLevel
+from jtoto.shell import LogLevel, Process, Shell, Stderr, Stdout
 from jtoto.stream import Stream
 
 

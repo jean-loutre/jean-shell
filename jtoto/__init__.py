@@ -1,18 +1,4 @@
-from .stream import (
-    Stream,
-    FileInputStream,
-    line_stream,
-    InputStream,
-    NullStream,
-    pipe,
-    MemoryStream,
-    LineStream,
-    LogStream,
-    multiplex,
-    stream_to,
-    copy_stream,
-)
-
+from .manifest import SourceDirectory, SourceFile
 from .shell import (
     FROM_STDERR,
     LogLevel,
@@ -26,10 +12,21 @@ from .shell import (
     echo,
     redirect,
 )
-
-from .task import task, Task, schedule, run_tasks, Inject
-
-from .manifest import SourceFile, SourceDirectory
+from .stream import (
+    FileInputStream,
+    InputStream,
+    LineStream,
+    LogStream,
+    MemoryStream,
+    NullStream,
+    Stream,
+    copy_stream,
+    line_stream,
+    multiplex,
+    pipe,
+    stream_to,
+)
+from .task import Inject, Task, run_tasks, schedule, task
 
 __all__ = [
     "FROM_STDERR",

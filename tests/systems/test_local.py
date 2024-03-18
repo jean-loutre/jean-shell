@@ -1,4 +1,5 @@
 """Config unit tests."""
+
 from asyncio import StreamReader
 from contextlib import contextmanager
 from subprocess import PIPE

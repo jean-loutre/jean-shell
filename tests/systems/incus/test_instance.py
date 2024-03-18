@@ -1,6 +1,6 @@
+from json import loads
 from typing import AsyncIterator
 
-from json import loads
 from jtoto.systems.incus import Instance
 from jtoto.systems.incus.cli import IncusCli
 from jtoto.testing import MockProcess, MockShell, check_process
