@@ -15,7 +15,7 @@ from jtoto.systems.incus.storage import Storage
 TObject = TypeVar("TObject", bound="Object")
 
 
-@task("Start incus node")
+@task
 async def incus_node(
     sh: Shell,
     incus_path: str = "incus",

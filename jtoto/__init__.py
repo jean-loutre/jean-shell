@@ -27,19 +27,19 @@ from .shell import (
     redirect,
 )
 
-from .task import task, Task, Noop, ScheduledTask
+from .task import task, Task, schedule, run_tasks, Inject
 
 from .manifest import SourceFile, SourceDirectory
 
 __all__ = [
     "FROM_STDERR",
     "FileInputStream",
+    "Inject",
     "InputStream",
     "LineStream",
     "LogLevel",
     "LogStream",
     "MemoryStream",
-    "Noop",
     "NullStream",
     "Process",
     "ProcessFailedError",
@@ -59,6 +59,8 @@ __all__ = [
     "multiplex",
     "pipe",
     "redirect",
+    "run_tasks",
+    "schedule",
     "stream_to",
     "task",
 ]
