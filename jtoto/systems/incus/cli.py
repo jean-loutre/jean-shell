@@ -24,9 +24,7 @@ class IncusCli(Shell):
         await (self(command) >> out)
         return loads(out.decode("utf-8"))
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         project_parameter = ""
         if self._project is not None:
             project_parameter = f"--project {self._project} "

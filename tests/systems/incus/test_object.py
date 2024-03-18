@@ -51,15 +51,11 @@ async def test_save() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
         yield check_process(
             "incus mockedit edit peter",
-            expected_stdin=_check_json_stdin(
-                {"mood": "happy", "name": "peter", "power": "3W"}
-            ),
+            expected_stdin=_check_json_stdin({"mood": "happy", "name": "peter", "power": "3W"}),
         )
         yield check_process(
             "incus mockedit edit peter",
-            expected_stdin=_check_json_stdin(
-                {"mood": "angry", "name": "peter", "power": "3W"}
-            ),
+            expected_stdin=_check_json_stdin({"mood": "angry", "name": "peter", "power": "3W"}),
         )
 
     async with MockShell(_mock_cli()) as sh:

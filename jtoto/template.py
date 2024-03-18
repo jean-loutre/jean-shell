@@ -88,8 +88,6 @@ def _get_loader(
         if loader is None:
             loader = current_loader
         else:
-            loader = ChoiceLoader(
-                [current_loader, loader, PrefixLoader({"parent": loader})]
-            )
+            loader = ChoiceLoader([current_loader, loader, PrefixLoader({"parent": loader})])
 
     return loader

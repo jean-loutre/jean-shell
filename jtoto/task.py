@@ -236,9 +236,7 @@ class Task(Generic[T]):
 
         return _run().__await__()
 
-    async def _run(
-        self, *tags: Iterable[str]
-    ) -> dict["Task[Any]", "ScheduledTask[Any]"]:
+    async def _run(self, *tags: Iterable[str]) -> dict["Task[Any]", "ScheduledTask[Any]"]:
         scheduled_tasks = self.schedule(*tags)
 
         async with TaskGroup() as group:
@@ -256,9 +254,7 @@ class Task(Generic[T]):
         if self in scheduled_tasks:
             return scheduled_tasks[self]
 
-        task_selected = len(tag_sets) == 0 or any(
-            tags & self._tags == tags for tags in tag_sets
-        )
+        task_selected = len(tag_sets) == 0 or any(tags & self._tags == tags for tags in tag_sets)
 
         if not task_selected and self._skip is not None:
             return self._skip._schedule(scheduled_tasks, tag_sets, force)
@@ -269,9 +265,7 @@ class Task(Generic[T]):
             return arg
 
         scheduled_args = [_schedule_arg(it) for it in self._args]
-        scheduled_kwargs = {
-            key: _schedule_arg(value) for key, value in self._kwargs.items()
-        }
+        scheduled_kwargs = {key: _schedule_arg(value) for key, value in self._kwargs.items()}
 
         scheduled_explicit_dependencies = [
             dependency._schedule(scheduled_tasks, tag_sets, task_selected or force)
@@ -325,9 +319,7 @@ ExecuteTask = Callable[..., Awaitable[T] | AsyncContextManager[T]]
 def task(
     description: str | None = None,
     tags: Iterable[str] | None = None,
-) -> Callable[
-    [Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]
-]:
+) -> Callable[[Callable[..., Awaitable[T] | AsyncContextManager[T]]], Callable[..., Task[T]]]:
     """Transform an async function into a task factory.
 
     Decorate a function so that for each argument, the decorator accepts
@@ -383,9 +375,7 @@ class ScheduledTask(Generic[T]):
 
     @property
     def dependencies(self) -> Iterable["ScheduledTask[Any]"]:
-        for item in chain(
-            self._args, self._kwargs.values(), self._explicit_dependencies
-        ):
+        for item in chain(self._args, self._kwargs.values(), self._explicit_dependencies):
             if isinstance(item, ScheduledTask):
                 yield item
 

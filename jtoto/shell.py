@@ -241,9 +241,7 @@ class ProcessFailedError(Exception):
     """
 
     def __init__(self, command: str, return_code: int, stderr_tail: str) -> None:
-        super().__init__(
-            f"{command} returned code {return_code}.\nLast stderr output:\n{stderr_tail}"
-        )
+        super().__init__(f"{command} returned code {return_code}.\nLast stderr output:\n{stderr_tail}")
         self._command = command
         self._return_code = return_code
         self._stderr_tail = stderr_tail
@@ -278,9 +276,7 @@ class _TailStream(LineStream):
 
 
 @command
-async def _raise_on_error(
-    out: Stdout, err: Stderr, start: StartProcess, command_string: str
-) -> Process:
+async def _raise_on_error(out: Stdout, err: Stderr, start: StartProcess, command_string: str) -> Process:
     stderr_tail = _TailStream()
     err = multiplex(err, stderr_tail)
     in_, err, run = await start(out, err)
@@ -291,9 +287,7 @@ async def _raise_on_error(
         await stderr_tail.close()
 
         if result != 0:
-            raise ProcessFailedError(
-                command_string, result, "\n".join(stderr_tail.tail)
-            )
+            raise ProcessFailedError(command_string, result, "\n".join(stderr_tail.tail))
 
         return result
 
@@ -375,9 +369,7 @@ class Shell(ABC):
             be piped to other commands, to create a jtoto.Pipe.
         """
         log = log or self._logger
-        raise_on_error = (
-            raise_on_error if raise_on_error is not None else self._raise_on_error
-        )
+        raise_on_error = raise_on_error if raise_on_error is not None else self._raise_on_error
         env = self._env | dict(env or {})
 
         async def _start(out: Stdout, err: Stderr) -> Process:
@@ -385,9 +377,7 @@ class Shell(ABC):
                 log.debug("$ %s", command)
                 if out is None and log is not None:
                     out = LogStream(log, level=LogLevel.STDOUT)
-                if (
-                    err is None or isinstance(err, _TailStream)
-                ) and self._logger is not None:
+                if (err is None or isinstance(err, _TailStream)) and self._logger is not None:
                     err = multiplex(err, LogStream(log, level=LogLevel.STDERR))
 
             return await self._start_process(out, err, command, env=env)
@@ -434,14 +424,10 @@ class Shell(ABC):
         if isinstance(env, Unset):
             env = self._env
 
-        return _OverlayShell(
-            self, logger=logger, raise_on_error=raise_on_error, env=env
-        )
+        return _OverlayShell(self, logger=logger, raise_on_error=raise_on_error, env=env)
 
     @abstractmethod
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         ...
 
 
@@ -456,9 +442,7 @@ class _OverlayShell(Shell):
         super().__init__(logger=logger, raise_on_error=raise_on_error, env=env)
         self._nested_shell = nested_shell
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         return await self._nested_shell._start_process(out, err, command, env)
 
 

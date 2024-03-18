@@ -21,15 +21,9 @@ async def write_manifest(shell: Shell, manifest: dict[str, File | Directory]) ->
             [resources_manifest](../../resources#jtoto.resources.resources_manifest)
             function.
     """
-    directories = [
-        (target, item)
-        for target, item in manifest.items()
-        if isinstance(item, Directory)
-    ]
+    directories = [(target, item) for target, item in manifest.items() if isinstance(item, Directory)]
 
-    files = [
-        (target, item) for target, item in manifest.items() if isinstance(item, File)
-    ]
+    files = [(target, item) for target, item in manifest.items() if isinstance(item, File)]
 
     directories = sorted(directories, key=lambda it: len(it[0]), reverse=True)
     synced_paths: set[str] = set()
@@ -59,9 +53,7 @@ async def write_manifest(shell: Shell, manifest: dict[str, File | Directory]) ->
                 synced_paths.add(destination_path)
 
     for destination_path, file in files:
-        async with file.open() as in_, shell(
-            f"cat > {destination_path}"
-        ).write_stdin() as out:
+        async with file.open() as in_, shell(f"cat > {destination_path}").write_stdin() as out:
             assert out is not None
             await copy_stream(in_, out)
 

@@ -5,9 +5,7 @@ from jtoto.manifest import File, SourceFile, Directory, SourceDirectory
 from jtoto.resources import resources_manifest
 
 
-async def check_manifest(
-    manifest: dict[str, File | Directory], expected_manifest: dict[str, Any]
-) -> None:
+async def check_manifest(manifest: dict[str, File | Directory], expected_manifest: dict[str, Any]) -> None:
     for key, value in expected_manifest.items():
         item = manifest[key]
         item_type = value["type"]
@@ -31,9 +29,7 @@ async def check_manifest(
 async def test_resource_manifest_file() -> None:
     manifest = resources_manifest(
         {
-            "/base_file": SourceFile(
-                "base_file", user="peter", group="otters", mode="666"
-            ),
+            "/base_file": SourceFile("base_file", user="peter", group="otters", mode="666"),
             "/steven": SourceFile("steven"),
         },
         "tests.test_resources_data.child",

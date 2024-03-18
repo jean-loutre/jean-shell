@@ -6,9 +6,7 @@ from jtoto.stream import Stream
 
 
 class LocalShell(Shell):
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         process = await create_subprocess_shell(
             command,
             stdout=PIPE,

@@ -40,12 +40,8 @@ class _InstanceShell(Shell):
         self._cli = cli
         self._name = container_name
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
-        env_parameters = "".join(
-            [f" --env {key}={quote(value)}" for key, value in env.items()]
-        )
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
+        env_parameters = "".join([f" --env {key}={quote(value)}" for key, value in env.items()])
 
         return await self._cli._start_process(  # pylint: disable=protected-access
             out,

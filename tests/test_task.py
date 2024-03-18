@@ -64,17 +64,13 @@ async def test_then() -> None:
     take_dinglebop_task = take_dinglebop()
     smooth_dinglebop_task = smooth_dinglebop(take_dinglebop_task)
 
-    await push_through_grumbo(
-        take_dinglebop_task, take_dinglebop_task.then(smooth_dinglebop_task)
-    ).run()
+    await push_through_grumbo(take_dinglebop_task, take_dinglebop_task.then(smooth_dinglebop_task)).run()
 
     assert sequence == ["one", "two"]
 
     sequence.clear()
     # alternative form
-    await push_through_grumbo(
-        take_dinglebop_task, take_dinglebop_task & smooth_dinglebop_task
-    ).run()
+    await push_through_grumbo(take_dinglebop_task, take_dinglebop_task & smooth_dinglebop_task).run()
 
     assert sequence == ["one", "two"]
     sequence.clear()
@@ -99,9 +95,7 @@ async def test_join() -> None:
 
     take_dinglebop_mock.reset_mock()
     smooth_dinglebop_mock.reset_mock()
-    await (
-        rub_dinglebop(take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task)
-    ).run()
+    await (rub_dinglebop(take_dinglebop_task // smooth_dinglebop() // take_dinglebop_task)).run()
 
     take_dinglebop_mock.assert_awaited_once()
     smooth_dinglebop_mock.assert_awaited_once()
@@ -198,8 +192,6 @@ async def test_skip_child_task() -> None:
 
 
 async def test_await_task() -> None:
-    take_dinglebop_mock, take_dinglebop = mock_task(
-        "dinglebop", return_value="dinglebop"
-    )
+    take_dinglebop_mock, take_dinglebop = mock_task("dinglebop", return_value="dinglebop")
 
     assert await take_dinglebop() == "dinglebop"

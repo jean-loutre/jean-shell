@@ -25,9 +25,7 @@ class DebugSSHLogger(SSHLogger):
 async def ssh_shell(
     host: str, port: int = 22, logger: Logger | None = None, **kwargs: Any
 ) -> AsyncIterator[Shell]:
-    async with connect(
-        host, port=port, options=SSHClientConnectionOptions(**kwargs)
-    ) as connection:
+    async with connect(host, port=port, options=SSHClientConnectionOptions(**kwargs)) as connection:
         yield _SshShell(connection, logger=logger)
 
 
@@ -46,18 +44,14 @@ class _SshStream(Stream):
 
 
 class _SshShell(Shell):
-    def __init__(
-        self, connection: SSHClientConnection, logger: Logger | None = None
-    ) -> None:
+    def __init__(self, connection: SSHClientConnection, logger: Logger | None = None) -> None:
         super().__init__(logger=logger)
         self._connection = connection
         if logger:
             ssh_logger = logger.getChild("ssh")
             self._connection._logger = DebugSSHLogger(parent=ssh_logger)
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         process: SSHClientProcess[Any] = await self._connection.create_process(
             command, stdout=out, stderr=err, env=env, encoding=None
         )

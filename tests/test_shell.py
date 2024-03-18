@@ -28,9 +28,7 @@ class MockShell(Shell):
         self.start = AsyncMock()
         self.start.return_value = (AsyncMock(), AsyncMock(), AsyncMock())
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         await self.start(command, env)
 
         async def _wait() -> int:
@@ -56,9 +54,7 @@ async def test_env() -> None:
 
     sh.start.reset_mock()
     await sh("power-weasel", env=dict(POWER_LEVEL="4", WEASEL_ANGER="55"))
-    sh.start.assert_called_once_with(
-        "power-weasel", {"POWER_LEVEL": "4", "WEASEL_ANGER": "55"}
-    )
+    sh.start.assert_called_once_with("power-weasel", {"POWER_LEVEL": "4", "WEASEL_ANGER": "55"})
 
     sh.start.reset_mock()
     await sh("power-weasel")
@@ -106,9 +102,7 @@ async def test_command_log() -> None:
 
 
 class _FailShell(Shell):
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         if err is not None:
             await err.write(b"Wubba Lubba\n")
 
@@ -170,9 +164,7 @@ async def test_log_error_on_fail() -> None:
         except BaseExceptionGroup as ex:
             assert len(ex.exceptions) == 1
             raise ex.exceptions[0]
-    mock_logger.log.assert_has_calls(
-        [call(LogLevel.STDERR, "Wubba Lubba"), call(LogLevel.STDERR, "Dub Dub")]
-    )
+    mock_logger.log.assert_has_calls([call(LogLevel.STDERR, "Wubba Lubba"), call(LogLevel.STDERR, "Dub Dub")])
 
 
 @command

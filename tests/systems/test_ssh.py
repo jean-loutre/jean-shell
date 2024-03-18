@@ -43,9 +43,7 @@ async def test_run(connect_mock: AsyncMock) -> None:
             process_mock.returncode = 0
             return process_mock
 
-        create_process_mock = (
-            connect_mock.return_value.__aenter__.return_value.create_process
-        )
+        create_process_mock = connect_mock.return_value.__aenter__.return_value.create_process
         create_process_mock.side_effect = create_process
 
         await sh("tickle otter")

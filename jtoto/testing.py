@@ -41,9 +41,7 @@ class MockStdin(Stream):
         self._closed.set()
 
 
-MockProcess = Callable[
-    [str, Stdout, Stderr, MockStdin, dict[str, str]], Coroutine[Any, None, int]
-]
+MockProcess = Callable[[str, Stdout, Stderr, MockStdin, dict[str, str]], Coroutine[Any, None, int]]
 
 
 async def _write_stream(content: bytes, stream: Stream) -> None:
@@ -76,9 +74,7 @@ def check_process(
         env: dict[str, str],
     ) -> int:
         if isinstance(expected_command, str):
-            assert (
-                command == expected_command
-            ), f"Unexpected command : {command}, expected {expected_command}"
+            assert command == expected_command, f"Unexpected command : {command}, expected {expected_command}"
         else:
             assert expected_command.match(
                 command
@@ -132,9 +128,7 @@ class MockShell(Shell):
             await self._system_mock
             assert self._processes.empty()
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         if self._system_mock.done():
             exception = self._system_mock.exception()
             if exception:
@@ -144,9 +138,7 @@ class MockShell(Shell):
         stdin = MockStdin()
 
         async def _run() -> int:
-            process_task: Task[int] = create_task(
-                process(command, out, err, stdin, env)
-            )
+            process_task: Task[int] = create_task(process(command, out, err, stdin, env))
             return await process_task
 
         return stdin, err, _run()

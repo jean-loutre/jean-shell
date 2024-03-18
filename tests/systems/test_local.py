@@ -121,9 +121,7 @@ async def test_stderr() -> None:
     with mock_create_process(stderr_data=b"kweek kweek"):
         sh = LocalShell()
         out = bytearray()
-        await (
-            sh("tickle otter") | redirect(stdout=FROM_STDERR, stderr=FROM_STDOUT) >> out
-        )
+        await (sh("tickle otter") | redirect(stdout=FROM_STDERR, stderr=FROM_STDOUT) >> out)
         assert out == b"kweek kweek"
 
 

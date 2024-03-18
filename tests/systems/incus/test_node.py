@@ -10,9 +10,7 @@ from json import dumps
 
 async def test_load_with_project() -> None:
     async def _mock_cli() -> AsyncIterator[MockProcess]:
-        yield check_process(
-            "incus --project peter project list --format json", stdout="[]"
-        )
+        yield check_process("incus --project peter project list --format json", stdout="[]")
         yield check_process("incus --project peter project create peter")
         yield check_process(
             "incus --project peter project list --format json",

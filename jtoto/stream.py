@@ -284,9 +284,7 @@ def pipe() -> tuple[Stream, InputStream]:
     buffer = bytearray()
     data_available = Event()
     closed = Event()
-    return _PipeStream(buffer, data_available, closed), _PipeInputStream(
-        buffer, data_available, closed
-    )
+    return _PipeStream(buffer, data_available, closed), _PipeInputStream(buffer, data_available, closed)
 
 
 Streamable = bytearray | Stream | None

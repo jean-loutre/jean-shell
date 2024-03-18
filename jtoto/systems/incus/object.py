@@ -44,9 +44,7 @@ class Object:
     async def load(self) -> None:
         # backup name as it's not returned by show commands, only by list
         name = self.name
-        configs = await self._cli.parse_stdout(
-            f"{self.subcommand} list {self.name} --format json"
-        )
+        configs = await self._cli.parse_stdout(f"{self.subcommand} list {self.name} --format json")
         assert len(configs) == 1
         self._full_config = configs[0]
 
@@ -55,12 +53,4 @@ class Object:
 
     def _dump(self) -> Command:
         ignore_keys = self.ignore_keys or []
-        return echo(
-            dumps(
-                {
-                    key: value
-                    for key, value in self._full_config.items()
-                    if key not in ignore_keys
-                }
-            )
-        )
+        return echo(dumps({key: value for key, value in self._full_config.items() if key not in ignore_keys}))

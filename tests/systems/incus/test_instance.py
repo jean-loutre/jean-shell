@@ -21,9 +21,7 @@ async def test_start_stop() -> None:
 async def test_get_shell() -> None:
     async def _mock_default() -> AsyncIterator[MockProcess]:
         yield check_process("incus exec peter -- sh -c 'kweek kweek'")
-        yield check_process(
-            "incus exec peter --env OTTER_KEY='kw33k kw33k' -- sh -c 'kweek kweek'"
-        )
+        yield check_process("incus exec peter --env OTTER_KEY='kw33k kw33k' -- sh -c 'kweek kweek'")
         yield check_process("incus --project otters exec peter -- sh -c 'kweek kweek'")
 
     async with MockShell(_mock_default()) as sh:

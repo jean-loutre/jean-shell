@@ -52,9 +52,7 @@ def _load_file(roots: list[Traversable], file: SourceFile) -> File:
         elif not resource_file.is_file():
             continue
 
-        return _ResourcesFile(
-            resource_file, user=file.user, group=file.group, mode=file.mode
-        )
+        return _ResourcesFile(resource_file, user=file.user, group=file.group, mode=file.mode)
 
     raise FileNotFoundError(file.path)
 

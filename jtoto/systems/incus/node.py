@@ -45,9 +45,7 @@ class Node:
 
         return await self._init_object(name, Instance, _create, **config)
 
-    async def init_network(
-        self, name: str, type: str | None = None, **config: Any
-    ) -> Network:
+    async def init_network(self, name: str, type: str | None = None, **config: Any) -> Network:
         async def _create() -> None:
             if type:
                 await self._cli(f"network create {name} --type {type}")
@@ -95,9 +93,7 @@ class Node:
 
         assert False, "Creation of object failed, but without raising any error"
 
-    async def _get_objects(
-        self, cls: Type[TObject], refresh: bool = False
-    ) -> list[TObject]:
+    async def _get_objects(self, cls: Type[TObject], refresh: bool = False) -> list[TObject]:
         if refresh and cls in self._objects:
             del self._objects[cls]
         object_list = cast(list[TObject] | None, self._objects.get(cls, None))
@@ -106,9 +102,7 @@ class Node:
                 cls(self._cli, **it)  # name argument is retrieved when calling list
                 for it in cast(
                     list[dict[str, Any]],
-                    await self._cli.parse_stdout(
-                        f"{cls.subcommand} list --format json"
-                    ),
+                    await self._cli.parse_stdout(f"{cls.subcommand} list --format json"),
                 )
             ]
             self._objects[cls] = cast(list[Object], object_list)

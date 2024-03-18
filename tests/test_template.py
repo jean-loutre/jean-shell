@@ -4,9 +4,7 @@ from jtoto.manifest import File
 from jtoto.template import template_manifest, Template
 
 
-async def check_manifest(
-    manifest: dict[str, File], expected_manifest: dict[str, Any]
-) -> None:
+async def check_manifest(manifest: dict[str, File], expected_manifest: dict[str, Any]) -> None:
     for key, value in expected_manifest.items():
         item = manifest[key]
         assert isinstance(item, File)

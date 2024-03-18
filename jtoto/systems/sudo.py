@@ -19,9 +19,7 @@ class SudoShell(Shell):
         self._inner = inner
         self._user = user
 
-    async def _start_process(
-        self, out: Stdout, err: Stderr, command: str, env: dict[str, str]
-    ) -> Process:
+    async def _start_process(self, out: Stdout, err: Stderr, command: str, env: dict[str, str]) -> Process:
         if self._user is not None:
             command = f"sudo -u {self._user} sh -c {quote(command)}"
         else:
