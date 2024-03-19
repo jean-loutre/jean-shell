@@ -1,9 +1,8 @@
 from asyncio import Event, TaskGroup
 from contextlib import asynccontextmanager
 from functools import wraps
-from inspect import Signature, signature, isasyncgen
+from inspect import Signature, isasyncgen, signature
 from itertools import chain
-from traceback import format_stack
 from typing import (
     Any,
     AsyncIterator,
@@ -26,8 +25,21 @@ Inject = object()
 
 class Task(Generic[T]):
     def __init__(self, schedule: Callable[["_Scheduler"], "_ScheduledTask[T]"]) -> None:
-        self.__stack = format_stack()
         self.__schedule = schedule
+
+    def __getattr__(self, name: str) -> "Task[Any]":
+        @self.from_function
+        async def get(self: T) -> Any:
+            return getattr(self, name)
+
+        return get(self)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> "Task[Any]":
+        @self.from_function
+        async def call(self: T, *args: Any, **kwargs: Any) -> Any:
+            return await self(*args, **kwargs)  # type: ignore
+
+        return call(self, *args, **kwargs)
 
     def schedule(self, scheduler: "_Scheduler") -> "_ScheduledTask[T]":
         return scheduler.get_scheduled_task(self, self.__schedule)
