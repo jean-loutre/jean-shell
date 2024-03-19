@@ -17,6 +17,7 @@ from typing import (
 )
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 ExecuteTask = Callable[..., Awaitable[T] | AsyncIterator[T]]
 
@@ -40,6 +41,13 @@ class Task(Generic[T]):
             return await self(*args, **kwargs)  # type: ignore
 
         return call(self, *args, **kwargs)
+
+    def __floordiv__(self, other: "Task[U]") -> "Task[U]":
+        @Task.from_function
+        async def _join(_: T, other: U) -> U:
+            return other
+
+        return _join(self, other)
 
     def schedule(self, scheduler: "_Scheduler") -> "_ScheduledTask[T]":
         return scheduler.get_scheduled_task(self, self.__schedule)
