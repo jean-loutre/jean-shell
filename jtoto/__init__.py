@@ -26,7 +26,10 @@ from .stream import (
     pipe,
     stream_to,
 )
-from .task import Inject, Task, run_tasks, schedule, task
+from .task import Inject, Task, run_tasks
+
+from .task import task, defer, inject_middleware
+
 
 __all__ = [
     "FROM_STDERR",
@@ -57,7 +60,8 @@ __all__ = [
     "pipe",
     "redirect",
     "run_tasks",
-    "schedule",
+    "defer",
+    "inject_middleware",
     "stream_to",
     "task",
 ]

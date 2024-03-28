@@ -2,6 +2,7 @@ from typing import Annotated, Any, AsyncIterator, Callable
 from unittest.mock import AsyncMock
 
 from jtoto import Inject, Task, run_tasks, task
+from jtoto import inject_middleware
 
 
 def mock_task(
@@ -47,4 +48,4 @@ async def test_task_inject() -> None:
     async def take_dinglebop(schleem: Annotated[str, Inject]) -> None:
         assert schleem == "schleem"
 
-    await run_tasks([take_dinglebop()], provide=[(str, "schleem")])
+    await run_tasks([take_dinglebop()], [inject_middleware({str: "schleem"})])

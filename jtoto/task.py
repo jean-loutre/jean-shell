@@ -1,14 +1,16 @@
 from asyncio import Event, TaskGroup
+
+from itertools import chain
+from inspect import signature
 from contextlib import asynccontextmanager
 from functools import wraps
-from inspect import Signature, isasyncgen, signature
-from itertools import chain
+from inspect import isasyncgen
 from typing import (
     Any,
     AsyncIterator,
     Awaitable,
+    Self,
     Callable,
-    Generator,
     Generic,
     Iterable,
     TypeVar,
@@ -20,75 +22,115 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 ExecuteTask = Callable[..., Awaitable[T] | AsyncIterator[T]]
-
-Inject = object()
+Args = Iterable[Any]
+KwArgs = dict[str, Any]
+TaskMiddleware = Callable[[Callable[..., Any], Args, KwArgs], tuple[Args, KwArgs]]
 
 
 class Task(Generic[T]):
-    def __init__(self, schedule: Callable[["_Scheduler"], "_ScheduledTask[T]"]) -> None:
+    def __init__(self, schedule: Callable[[TaskMiddleware], "_ScheduledTask[T]"]) -> None:
         self.__schedule = schedule
 
     def __getattr__(self, name: str) -> "Task[Any]":
-        @self.from_function
-        async def get(self: T) -> Any:
-            return getattr(self, name)
+        @Task.defer
+        def get(self: Self) -> Task[Any]:
+            return cast(Task[Any], getattr(self, name))
 
         return get(self)
 
     def __call__(self, *args: Any, **kwargs: Any) -> "Task[Any]":
-        @self.from_function
+        @Task.create
         async def call(self: T, *args: Any, **kwargs: Any) -> Any:
             return await self(*args, **kwargs)  # type: ignore
 
         return call(self, *args, **kwargs)
 
     def __floordiv__(self, other: "Task[U]") -> "Task[U]":
-        @Task.from_function
+        @Task.create
         async def _join(_: T, other: U) -> U:
             return other
 
         return _join(self, other)
 
-    def schedule(self, scheduler: "_Scheduler") -> "_ScheduledTask[T]":
-        return scheduler.get_scheduled_task(self, self.__schedule)
+    @staticmethod
+    async def run(tasks: Iterable["Task[Any]"], middlewares: Iterable[TaskMiddleware] | None = None) -> None:
+        cache: dict[Task[Any], _ScheduledTask[Any]] = {}
+
+        def schedule(arg: Any) -> Any:
+            if not isinstance(arg, Task):
+                return arg
+
+            if arg not in cache:
+                cache[arg] = arg.__schedule(all_middlewares)
+
+            return cache[arg]
+
+        def all_middlewares(execute: Callable[..., Any], args: Args, kwargs: KwArgs) -> tuple[Args, KwArgs]:
+            for middleware in middlewares or []:
+                args, kwargs = middleware(execute, args, kwargs)
+
+            return [schedule(arg) for arg in args], {name: schedule(arg) for name, arg in kwargs.items()}
+
+        for task in tasks:
+            schedule(task)
+
+        async with TaskGroup() as group:
+            for scheduled_task in cache.values():
+                group.create_task(scheduled_task.run())
 
     @staticmethod
-    def from_function(execute: ExecuteTask[T]) -> Callable[..., "Task[T]"]:
+    def create(execute: ExecuteTask[T]) -> Callable[..., "Task[T]"]:
         @wraps(execute)
         def wrapper(*args: Any, **kwargs: Any) -> Task[T]:
-            def schedule(scheduler: _Scheduler) -> _ScheduledTask[T]:
-                def schedule_arg(arg: Any) -> Any:
-                    if isinstance(arg, Task):
-                        return arg.schedule(scheduler)
-                    return arg
-
-                all_kwargs = scheduler.get_injected_args(signature(execute)) | dict(kwargs)
-
-                return _ScheduledTask(
-                    execute,
-                    *[schedule_arg(arg) for arg in args],
-                    **{name: schedule_arg(arg) for name, arg in all_kwargs.items()},
-                )
+            def schedule(middleware: TaskMiddleware) -> _ScheduledTask[T]:
+                nonlocal args, kwargs
+                processed_args, processed_kwargs = middleware(execute, args, kwargs)
+                return _ScheduledTask(execute, *processed_args, **processed_kwargs)
 
             return Task(schedule)
 
         return wrapper
 
     @staticmethod
-    def from_schedule_function(function: Callable[..., "Task[T]"]) -> "Task[T]":
-        def schedule(scheduler: _Scheduler) -> _ScheduledTask[T]:
-            kwargs = scheduler.get_injected_args(signature(function))
-            task = function(**kwargs)
-            return task.schedule(scheduler)
+    def defer(function: Callable[..., "Task[T]"]) -> "Task[T]":
+        def schedule(middleware: TaskMiddleware) -> _ScheduledTask[T]:
+            args, kwargs = middleware(function, [], {})
+            task = function(*args, **kwargs)
+            return task.__schedule(middleware)
 
         return Task(schedule)
 
-    def __await__(self) -> Generator[None, None, T]:
-        return self.__schedule(_Scheduler({})).run().__await__()
+
+task = Task.create
+defer = Task.defer
+run_tasks = Task.run
 
 
-task = Task.from_function
-schedule = Task.from_schedule_function
+Inject = object()
+
+
+def inject_middleware(container: dict[type, Any]) -> TaskMiddleware:
+    def middleware(function: Callable[..., Any], args: Args, kwargs: KwArgs) -> tuple[Args, KwArgs]:
+        function_signature = signature(function)
+        for name, parameter in function_signature.parameters.items():
+            annotation = parameter.annotation
+            if annotation is None:
+                continue
+
+            if not hasattr(annotation, "__metadata__"):
+                continue
+
+            if all(it != Inject for it in annotation.__metadata__):
+                continue
+
+            underlying_type = get_args(annotation)[0]
+            assert underlying_type in container, f"Missing provided type {underlying_type}"
+
+            kwargs[name] = container[underlying_type]
+
+        return args, kwargs
+
+    return middleware
 
 
 class _Unset:
@@ -139,52 +181,3 @@ class _ScheduledTask(Generic[T]):
             return arg.__result
 
         return arg
-
-
-class _Scheduler:
-    def __init__(self, provide: dict[type, Any]) -> None:
-        self.__provide = provide
-        self.__scheduled_tasks: dict[Task[Any], _ScheduledTask[Any]] = {}
-
-    @staticmethod
-    async def run(tasks: Iterable[Task[Any]], provide: Iterable[tuple[type, Any]] | None = None) -> None:
-        scheduler = _Scheduler({type_: value for type_, value in (provide or [])})
-        for task in tasks:
-            task.schedule(scheduler)
-
-        async with TaskGroup() as group:
-            # Set is important: due to the schedule decorator, two tasks can
-            # yield the same scheduled tasks, so don't execute them twice here.
-            for scheduled_task in set(scheduler.__scheduled_tasks.values()):
-                group.create_task(scheduled_task.run())
-
-    def get_injected_args(self, function: Signature) -> dict[str, Any]:
-        injected_args = {}
-        for name, parameter in function.parameters.items():
-            annotation = parameter.annotation
-            if annotation is None:
-                continue
-
-            if not hasattr(annotation, "__metadata__"):
-                continue
-
-            if all(it != Inject for it in annotation.__metadata__):
-                continue
-
-            underlying_type = get_args(annotation)[0]
-            assert underlying_type in self.__provide, f"Missing provided type {underlying_type}"
-
-            injected_args[name] = self.__provide[underlying_type]
-
-        return injected_args
-
-    def get_scheduled_task(
-        self, task: Task[T], create_scheduled_task: Callable[["_Scheduler"], _ScheduledTask[T]]
-    ) -> _ScheduledTask[T]:
-        if task not in self.__scheduled_tasks:
-            self.__scheduled_tasks[task] = create_scheduled_task(self)
-
-        return self.__scheduled_tasks[task]
-
-
-run_tasks = _Scheduler.run

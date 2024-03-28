@@ -4,6 +4,7 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Protocol, TypeVar
 from jtoto.systems.incus import Instance, Network, Node, Profile, Project, Storage, incus_node
 from jtoto.systems.incus.object import Object
 from jtoto.testing import MockProcess, MockShell, check_process
+from jtoto import run_tasks, task
 
 
 async def test_load_with_project() -> None:
@@ -16,7 +17,7 @@ async def test_load_with_project() -> None:
         )
 
     sh = MockShell(_mock_cli())
-    await incus_node(sh, project="peter")
+    await run_tasks([incus_node(sh, project="peter")])
 
 
 T = TypeVar("T", bound=Object)
@@ -62,23 +63,26 @@ async def _test_init_object(
             ),
         )
 
-    node = await incus_node(MockShell(_mock_cli()))
-    obj = await create(node, "peter")
-    assert obj.name == "peter"
-    assert obj.description == "description"
+    @task
+    async def _run(node: Node) -> None:
+        obj = await create(node, "peter")
+        assert obj.name == "peter"
+        assert obj.description == "description"
 
-    obj = await create(node, "steven")
-    assert obj.name == "steven"
-    assert obj.description == "description"
+        obj = await create(node, "steven")
+        assert obj.name == "steven"
+        assert obj.description == "description"
 
-    # Shouldn't call anything, as everything is in cache
-    obj = await create(node, "steven")
-    assert obj.name == "steven"
-    assert obj.description == "description"
+        # Shouldn't call anything, as everything is in cache
+        obj = await create(node, "steven")
+        assert obj.name == "steven"
+        assert obj.description == "description"
 
-    obj = await create(node, "steven", power="10KW")
-    assert obj.name == "steven"
-    assert obj.description == "description"
+        obj = await create(node, "steven", power="10KW")
+        assert obj.name == "steven"
+        assert obj.description == "description"
+
+    await run_tasks([_run(incus_node(MockShell(_mock_cli())))])
 
 
 async def test_init_instance() -> None:
